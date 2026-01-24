@@ -127,7 +127,7 @@ const Sidebar = () => (
     {/* Back to Landing (web only) */}
     {!window.isElectron && (
       <button
-        onClick={() => window.location.reload()}
+        onClick={() => { localStorage.removeItem('bittrust:visited'); window.location.reload(); }}
         className="flex items-center gap-2 px-2 py-2 mb-4 text-zinc-500 hover:text-white transition-colors text-sm"
       >
         <ChevronRight size={16} className="rotate-180" />
