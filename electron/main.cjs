@@ -8,7 +8,7 @@
  * - File system operations
  */
 
-const isDev = process.env.NODE_ENV !== 'production' && !require('electron').app.isPackaged;
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -17,7 +17,7 @@ const crypto = require('crypto');
 // APP CONFIGURATION
 // ============================================
 
-const isDev = !require('electron').app.isPackaged;
+const isDev = !app.isPackaged;
 const APP_NAME = 'BitTrust';
 const APP_DATA_PATH = path.join(app.getPath('userData'), 'BitTrust');
 const VAULTS_PATH = path.join(APP_DATA_PATH, 'vaults');
