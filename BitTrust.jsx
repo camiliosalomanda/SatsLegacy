@@ -121,11 +121,22 @@ const BitTrust = () => {
     </button>
   );
 
-  // Sidebar
-  const Sidebar = () => (
-    <div className="w-64 bg-zinc-900/80 backdrop-blur-xl border-r border-zinc-800 p-4 flex flex-col">
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-2 mb-8">
+ // Sidebar
+const Sidebar = () => (
+  <div className="w-64 bg-zinc-900/80 backdrop-blur-xl border-r border-zinc-800 p-4 flex flex-col">
+    {/* Back to Landing (web only) */}
+    {!window.isElectron && (
+      <button
+        onClick={() => window.location.reload()}
+        className="flex items-center gap-2 px-2 py-2 mb-4 text-zinc-500 hover:text-white transition-colors text-sm"
+      >
+        <ChevronRight size={16} className="rotate-180" />
+        Back to Home
+      </button>
+    )}
+    
+    {/* Logo */}
+    <div className="flex items-center gap-3 px-2 mb-8">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
           <Shield size={24} className="text-black" />
         </div>
