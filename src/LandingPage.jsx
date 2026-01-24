@@ -14,7 +14,7 @@ import {
 const LandingPage = ({ onEnterApp }) => {
   const [showAllFeatures, setShowAllFeatures] = useState(false);
 
-  const DOWNLOAD_URL_WINDOWS = 'https://github.com/camiliosalomanda/BTCTrust/releases/latest/download/BitTrust-Setup-1.0.0.exe';
+  const DOWNLOAD_URL_WINDOWS = 'https://github.com/camiliosalomanda/BTCTrust/releases/download/v1.0.0/BitTrust.Setup.1.0.0.exe';
   const DOWNLOAD_URL_MAC = '#'; // Coming soon
   const DOWNLOAD_URL_LINUX = '#'; // Coming soon
 
