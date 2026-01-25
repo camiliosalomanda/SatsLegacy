@@ -507,7 +507,7 @@ const LandingPage = ({ onEnterApp }) => {
           {/* Documentation Hub Link */}
           <div className="mt-12 text-center">
             <a
-              href="/docs"
+              href="#/docs"
               className="inline-flex items-center gap-2 px-6 py-3 border border-zinc-700 text-zinc-300 rounded-lg hover:border-zinc-600 hover:text-white transition-colors"
             >
               <BookOpen size={18} />
@@ -532,7 +532,7 @@ const LandingPage = ({ onEnterApp }) => {
             </div>
             <div className="flex items-center gap-6 text-sm text-zinc-500">
               <a href="https://github.com/camiliosalomanda/BTCTrust" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">GitHub</a>
-              <a href="/docs" className="hover:text-white transition-colors">Documentation</a>
+              <a href="#/docs" className="hover:text-white transition-colors">Documentation</a>
               <a href="#" className="hover:text-white transition-colors">Support</a>
             </div>
           </div>
