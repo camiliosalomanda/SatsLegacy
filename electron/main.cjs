@@ -1,5 +1,5 @@
 /**
- * BitTrust Electron Main Process
+ * SatsLegacy Electron Main Process
  * 
  * Handles:
  * - Vault storage and encryption
@@ -18,8 +18,8 @@ const crypto = require('crypto');
 // ============================================
 
 const isDev = !app.isPackaged;
-const APP_NAME = 'BitTrust';
-const APP_DATA_PATH = path.join(app.getPath('userData'), 'BitTrust');
+const APP_NAME = 'SatsLegacy';
+const APP_DATA_PATH = path.join(app.getPath('userData'), 'SatsLegacy');
 const VAULTS_PATH = path.join(APP_DATA_PATH, 'vaults');
 const LICENSE_PATH = path.join(APP_DATA_PATH, 'license.json');
 const SETTINGS_PATH = path.join(APP_DATA_PATH, 'settings.json');
@@ -247,13 +247,13 @@ ipcMain.handle('vault:export', async (event, { vaultId, password }) => {
     decrypt(encrypted, password);
     
     const { filePath } = await dialog.showSaveDialog(mainWindow, {
-      defaultPath: `bittrust-vault-${vaultId.slice(0, 8)}.btv`,
-      filters: [{ name: 'BitTrust Vault', extensions: ['btv'] }]
+      defaultPath: `SatsLegacy-vault-${vaultId.slice(0, 8)}.btv`,
+      filters: [{ name: 'SatsLegacy Vault', extensions: ['btv'] }]
     });
     
     if (filePath) {
       const exportData = {
-        format: 'bittrust-vault-v1',
+        format: 'SatsLegacy-vault-v1',
         exported_at: new Date().toISOString(),
         encrypted_vault: encrypted
       };
@@ -270,7 +270,7 @@ ipcMain.handle('vault:export', async (event, { vaultId, password }) => {
 ipcMain.handle('vault:import', async (event) => {
   try {
     const { filePaths } = await dialog.showOpenDialog(mainWindow, {
-      filters: [{ name: 'BitTrust Vault', extensions: ['btv'] }],
+      filters: [{ name: 'SatsLegacy Vault', extensions: ['btv'] }],
       properties: ['openFile']
     });
     
@@ -278,7 +278,7 @@ ipcMain.handle('vault:import', async (event) => {
       const content = fs.readFileSync(filePaths[0], 'utf8');
       const importData = JSON.parse(content);
       
-      if (importData.format !== 'bittrust-vault-v1') {
+      if (importData.format !== 'SatsLegacy-vault-v1') {
         return { success: false, error: 'Invalid vault format' };
       }
       

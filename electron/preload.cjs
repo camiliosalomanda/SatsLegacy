@@ -1,5 +1,5 @@
 /**
- * BitTrust Electron Preload Script
+ * SatsLegacy Electron Preload Script
  * 
  * Exposes safe IPC channels to the renderer process.
  */
