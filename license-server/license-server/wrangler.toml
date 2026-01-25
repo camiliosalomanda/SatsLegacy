@@ -1,0 +1,15 @@
+name = "bittrust-license"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Optional: KV namespace for storing licenses
+# [[kv_namespaces]]
+# binding = "LICENSES"
+# id = "your-kv-namespace-id"
+
+# Secrets (set via `wrangler secret put`):
+# - BTCPAY_WEBHOOK_SECRET
+# - LICENSE_PRIVATE_KEY
+# - LICENSE_PUBLIC_KEY
+# - RESEND_API_KEY
