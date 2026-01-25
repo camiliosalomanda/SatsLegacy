@@ -93,6 +93,18 @@ const LandingPage = ({ onEnterApp }) => {
           <p className="text-sm text-zinc-600 mt-6">
             Free tier available • No signup required • Open source
           </p>
+
+          {/* Heir Claim Link */}
+          <div className="mt-8 pt-8 border-t border-zinc-800/50">
+            <a 
+              href="#/claim" 
+              className="inline-flex items-center gap-2 text-zinc-500 hover:text-orange-400 transition-colors"
+            >
+              <Key size={16} />
+              <span>I'm an heir — claim my inheritance</span>
+              <ArrowRight size={14} />
+            </a>
+          </div>
         </div>
       </header>
 
@@ -145,7 +157,6 @@ const LandingPage = ({ onEnterApp }) => {
               ))}
             </div>
           </div>
-
           <div>
             <h2 className="text-3xl font-bold mb-6">
               The BitTrust<br />
@@ -183,53 +194,19 @@ const LandingPage = ({ onEnterApp }) => {
 
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              {
-                icon: Lock,
-                title: 'Timelock Vaults',
-                desc: 'Funds unlock at a specific block height. Immutable once set.',
-                color: 'orange'
-              },
-              {
-                icon: Clock,
-                title: "Dead Man's Switch",
-                desc: 'Requires periodic proof of life. Miss a check-in, heirs can claim.',
-                color: 'purple'
-              },
-              {
-                icon: Users,
-                title: 'Multisig Decay',
-                desc: 'Starts 2-of-3, decays to 1-of-2 after timelock. Automatic handoff.',
-                color: 'blue'
-              },
-              {
-                icon: Key,
-                title: 'Shamir Backups',
-                desc: 'Split vault keys into shares. Any 2-of-3 reconstructs.',
-                color: 'green'
-              },
-              {
-                icon: Globe,
-                title: 'Nostr Relay Backup',
-                desc: 'Censorship-resistant off-site storage. Survives house fires.',
-                color: 'pink'
-              },
-              {
-                icon: Shield,
-                title: 'Duress Protection',
-                desc: 'Wrong PIN routes to decoy or burn address. Coercion-resistant.',
-                color: 'red'
-              }
+              { icon: Lock, title: 'Timelock Vaults', desc: 'Funds unlock at a specific block height. Immutable once set.', color: 'orange' },
+              { icon: Clock, title: "Dead Man's Switch", desc: 'Requires periodic proof of life. Miss a check-in, heirs can claim.', color: 'purple' },
+              { icon: Users, title: 'Multisig Decay', desc: 'Starts 2-of-3, decays to 1-of-2 after timelock. Automatic handoff.', color: 'blue' },
+              { icon: Key, title: 'Shamir Backups', desc: 'Split vault keys into shares. Any 2-of-3 reconstructs.', color: 'green' },
+              { icon: Globe, title: 'Nostr Relay Backup', desc: 'Censorship-resistant off-site storage. Survives house fires.', color: 'pink' },
+              { icon: Shield, title: 'Duress Protection', desc: 'Wrong PIN routes to decoy or burn address. Coercion-resistant.', color: 'red' }
             ].map((feature, i) => (
               <div
                 key={i}
                 className="p-6 bg-zinc-800/50 border border-zinc-700 rounded-xl hover:border-zinc-600 transition-colors"
               >
                 <div className={`w-12 h-12 rounded-xl bg-${feature.color}-500/10 flex items-center justify-center mb-4`}>
-                  <feature.icon
-                    size={24}
-                    className={`text-${feature.color}-400`}
-                    style={{ color: feature.color === 'orange' ? '#fb923c' : undefined }}
-                  />
+                  <feature.icon size={24} className={`text-${feature.color}-400`} style={{ color: feature.color === 'orange' ? '#fb923c' : undefined }} />
                 </div>
                 <h3 className="text-lg font-semibold text-white mb-2">{feature.title}</h3>
                 <p className="text-zinc-400 text-sm">{feature.desc}</p>
@@ -398,7 +375,7 @@ const LandingPage = ({ onEnterApp }) => {
         </div>
       </section>
 
-      {/* Education & Resources - NEW SECTION REPLACING OLD CTA */}
+      {/* Education & Resources */}
       <section id="learn" className="bg-gradient-to-b from-orange-500/10 to-transparent border-t border-orange-500/20">
         <div className="max-w-6xl mx-auto px-6 py-24">
           <div className="text-center mb-16">
@@ -419,8 +396,8 @@ const LandingPage = ({ onEnterApp }) => {
               <div className="flex-1 text-center md:text-left">
                 <h3 className="text-2xl font-bold mb-2">BitTrust Whitepaper</h3>
                 <p className="text-zinc-400 mb-4">
-                  The complete technical guide to trustless Bitcoin inheritance. Covers Miniscript policies, 
-                  timelock mechanics, key distribution strategies, and security threat models.
+                  The complete technical guide to trustless Bitcoin inheritance. Covers Miniscript
+                  policies, timelock mechanics, key distribution strategies, and security threat models.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
                   <a
@@ -453,15 +430,14 @@ const LandingPage = ({ onEnterApp }) => {
               </div>
               <h3 className="text-lg font-semibold text-white mb-2">The Sovereignty Problem</h3>
               <p className="text-zinc-400 text-sm mb-4">
-                Why custodial inheritance betrays Bitcoin's core promise. The impossible tradeoffs 
+                Why custodial inheritance betrays Bitcoin's core promise. The impossible tradeoffs
                 of traditional estate planning and third-party trust.
               </p>
               <a
                 href="#/docs/sovereignty-problem"
                 className="inline-flex items-center gap-2 text-orange-400 text-sm group-hover:text-orange-300 transition-colors"
               >
-                Learn more
-                <ArrowRight size={14} />
+                Learn more <ArrowRight size={14} />
               </a>
             </div>
 
@@ -472,15 +448,14 @@ const LandingPage = ({ onEnterApp }) => {
               </div>
               <h3 className="text-lg font-semibold text-white mb-2">Miniscript & Timelocks</h3>
               <p className="text-zinc-400 text-sm mb-4">
-                How Bitcoin's native scripting enables trustless inheritance. OP_CHECKLOCKTIMEVERIFY, 
+                How Bitcoin's native scripting enables trustless inheritance. OP_CHECKLOCKTIMEVERIFY,
                 spending policies, and dead man's switches explained.
               </p>
               <a
                 href="#/docs/miniscript-timelocks"
                 className="inline-flex items-center gap-2 text-orange-400 text-sm group-hover:text-orange-300 transition-colors"
               >
-                Learn more
-                <ArrowRight size={14} />
+                Learn more <ArrowRight size={14} />
               </a>
             </div>
 
@@ -491,15 +466,14 @@ const LandingPage = ({ onEnterApp }) => {
               </div>
               <h3 className="text-lg font-semibold text-white mb-2">Key Distribution</h3>
               <p className="text-zinc-400 text-sm mb-4">
-                Practical strategies for proactive key distribution. Hardware wallet ceremonies, 
+                Practical strategies for proactive key distribution. Hardware wallet ceremonies,
                 Shamir's Secret Sharing, and encrypted heir kits.
               </p>
               <a
                 href="#/docs/key-distribution"
                 className="inline-flex items-center gap-2 text-orange-400 text-sm group-hover:text-orange-300 transition-colors"
               >
-                Learn more
-                <ArrowRight size={14} />
+                Learn more <ArrowRight size={14} />
               </a>
             </div>
           </div>
@@ -533,6 +507,7 @@ const LandingPage = ({ onEnterApp }) => {
             <div className="flex items-center gap-6 text-sm text-zinc-500">
               <a href="https://github.com/camiliosalomanda/BTCTrust" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">GitHub</a>
               <a href="#/docs" className="hover:text-white transition-colors">Documentation</a>
+              <a href="#/claim" className="hover:text-orange-400 transition-colors">Heir Portal</a>
               <a href="#" className="hover:text-white transition-colors">Support</a>
             </div>
           </div>
