@@ -1,14 +1,14 @@
 /**
  * BitTrust Landing Page
- * 
+ *
  * Marketing + Download page for the desktop app
  */
 
 import React, { useState } from 'react';
-import { 
-  Shield, Download, Lock, Clock, Users, Key, Zap, Globe, 
+import {
+  Shield, Download, Lock, Clock, Users, Key, Zap, Globe,
   CheckCircle, ArrowRight, Github, Monitor, Apple, Terminal,
-  ChevronDown, ExternalLink, Star, Quote
+  ChevronDown, ExternalLink, Star, Quote, FileText, AlertTriangle, BookOpen
 } from 'lucide-react';
 
 const LandingPage = ({ onEnterApp }) => {
@@ -44,6 +44,7 @@ const LandingPage = ({ onEnterApp }) => {
             <a href="#features" className="text-zinc-400 hover:text-white transition-colors">Features</a>
             <a href="#pricing" className="text-zinc-400 hover:text-white transition-colors">Pricing</a>
             <a href="#download" className="text-zinc-400 hover:text-white transition-colors">Download</a>
+            <a href="#learn" className="text-zinc-400 hover:text-white transition-colors">Learn</a>
             <button
               onClick={onEnterApp}
               className="px-4 py-2 bg-zinc-800 text-white rounded-lg hover:bg-zinc-700 transition-colors"
@@ -59,16 +60,16 @@ const LandingPage = ({ onEnterApp }) => {
             <Zap size={16} className="text-orange-400" />
             <span className="text-sm text-orange-400">100% Self-Sovereign • No Third Parties</span>
           </div>
-          
+
           <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
             Bitcoin Inheritance<br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-orange-600">
               Without Trust
             </span>
           </h1>
-          
+
           <p className="text-xl text-zinc-400 max-w-2xl mx-auto mb-12">
-            Create trustless inheritance vaults using Bitcoin's native scripting. 
+            Create trustless inheritance vaults using Bitcoin's native scripting.
             No custody, no fees, no third parties. Your keys, your rules, your legacy.
           </p>
 
@@ -144,6 +145,7 @@ const LandingPage = ({ onEnterApp }) => {
               ))}
             </div>
           </div>
+
           <div>
             <h2 className="text-3xl font-bold mb-6">
               The BitTrust<br />
@@ -223,7 +225,11 @@ const LandingPage = ({ onEnterApp }) => {
                 className="p-6 bg-zinc-800/50 border border-zinc-700 rounded-xl hover:border-zinc-600 transition-colors"
               >
                 <div className={`w-12 h-12 rounded-xl bg-${feature.color}-500/10 flex items-center justify-center mb-4`}>
-                  <feature.icon size={24} className={`text-${feature.color}-400`} style={{ color: feature.color === 'orange' ? '#fb923c' : undefined }} />
+                  <feature.icon
+                    size={24}
+                    className={`text-${feature.color}-400`}
+                    style={{ color: feature.color === 'orange' ? '#fb923c' : undefined }}
+                  />
                 </div>
                 <h3 className="text-lg font-semibold text-white mb-2">{feature.title}</h3>
                 <p className="text-zinc-400 text-sm">{feature.desc}</p>
@@ -392,30 +398,122 @@ const LandingPage = ({ onEnterApp }) => {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="bg-gradient-to-b from-orange-500/10 to-transparent border-t border-orange-500/20">
-        <div className="max-w-4xl mx-auto px-6 py-24 text-center">
-          <h2 className="text-4xl font-bold mb-4">
-            Secure Your Legacy Today
-          </h2>
-          <p className="text-xl text-zinc-400 mb-8">
-            Don't let your Bitcoin die with you. Set up trustless inheritance in minutes.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+      {/* Education & Resources - NEW SECTION REPLACING OLD CTA */}
+      <section id="learn" className="bg-gradient-to-b from-orange-500/10 to-transparent border-t border-orange-500/20">
+        <div className="max-w-6xl mx-auto px-6 py-24">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold mb-4">
+              Understand Trustless Inheritance
+            </h2>
+            <p className="text-xl text-zinc-400 max-w-2xl mx-auto">
+              Don't trust, verify. Learn the technical foundations of sovereign Bitcoin inheritance.
+            </p>
+          </div>
+
+          {/* Whitepaper CTA */}
+          <div className="mb-16 p-8 bg-zinc-800/50 border border-zinc-700 rounded-2xl max-w-3xl mx-auto">
+            <div className="flex flex-col md:flex-row items-center gap-8">
+              <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center flex-shrink-0">
+                <FileText size={40} className="text-black" />
+              </div>
+              <div className="flex-1 text-center md:text-left">
+                <h3 className="text-2xl font-bold mb-2">BitTrust Whitepaper</h3>
+                <p className="text-zinc-400 mb-4">
+                  The complete technical guide to trustless Bitcoin inheritance. Covers Miniscript policies, 
+                  timelock mechanics, key distribution strategies, and security threat models.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
+                  <a
+                    href="/BitTrust-Whitepaper.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-black font-semibold rounded-lg hover:opacity-90 transition-opacity"
+                  >
+                    <Download size={18} />
+                    Download PDF
+                  </a>
+                  <a
+                    href="/whitepaper"
+                    className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-zinc-700 text-white font-semibold rounded-lg hover:bg-zinc-600 transition-colors"
+                  >
+                    <ExternalLink size={18} />
+                    Read Online
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Technical Deep-Dive Cards */}
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* Card 1: The Sovereignty Problem */}
+            <div className="p-6 bg-zinc-800/50 border border-zinc-700 rounded-xl hover:border-orange-500/30 transition-colors group">
+              <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center mb-4">
+                <AlertTriangle size={24} className="text-red-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-2">The Sovereignty Problem</h3>
+              <p className="text-zinc-400 text-sm mb-4">
+                Why custodial inheritance betrays Bitcoin's core promise. The impossible tradeoffs 
+                of traditional estate planning and third-party trust.
+              </p>
+              <a
+                href="/docs/sovereignty-problem"
+                className="inline-flex items-center gap-2 text-orange-400 text-sm group-hover:text-orange-300 transition-colors"
+              >
+                Learn more
+                <ArrowRight size={14} />
+              </a>
+            </div>
+
+            {/* Card 2: Miniscript & Timelocks */}
+            <div className="p-6 bg-zinc-800/50 border border-zinc-700 rounded-xl hover:border-orange-500/30 transition-colors group">
+              <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center mb-4">
+                <Lock size={24} className="text-orange-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-2">Miniscript & Timelocks</h3>
+              <p className="text-zinc-400 text-sm mb-4">
+                How Bitcoin's native scripting enables trustless inheritance. OP_CHECKLOCKTIMEVERIFY, 
+                spending policies, and dead man's switches explained.
+              </p>
+              <a
+                href="/docs/miniscript-timelocks"
+                className="inline-flex items-center gap-2 text-orange-400 text-sm group-hover:text-orange-300 transition-colors"
+              >
+                Learn more
+                <ArrowRight size={14} />
+              </a>
+            </div>
+
+            {/* Card 3: Key Distribution */}
+            <div className="p-6 bg-zinc-800/50 border border-zinc-700 rounded-xl hover:border-orange-500/30 transition-colors group">
+              <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center mb-4">
+                <Key size={24} className="text-green-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-2">Key Distribution</h3>
+              <p className="text-zinc-400 text-sm mb-4">
+                Practical strategies for proactive key distribution. Hardware wallet ceremonies, 
+                Shamir's Secret Sharing, and encrypted heir kits.
+              </p>
+              <a
+                href="/docs/key-distribution"
+                className="inline-flex items-center gap-2 text-orange-400 text-sm group-hover:text-orange-300 transition-colors"
+              >
+                Learn more
+                <ArrowRight size={14} />
+              </a>
+            </div>
+          </div>
+
+          {/* Documentation Hub Link */}
+          <div className="mt-12 text-center">
             <a
-              href="#download"
-              className="flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-orange-500 to-orange-600 text-black font-semibold rounded-xl hover:opacity-90 transition-opacity"
+              href="/docs"
+              className="inline-flex items-center gap-2 px-6 py-3 border border-zinc-700 text-zinc-300 rounded-lg hover:border-zinc-600 hover:text-white transition-colors"
             >
-              <Download size={20} />
-              Download Now
+              <BookOpen size={18} />
+              View Full Documentation
+              <ArrowRight size={14} />
             </a>
-            <button
-              onClick={onEnterApp}
-              className="flex items-center gap-2 px-8 py-4 bg-zinc-800 text-white font-semibold rounded-xl hover:bg-zinc-700 transition-colors"
-            >
-              Try Web Demo
-              <ArrowRight size={20} />
-            </button>
           </div>
         </div>
       </section>
@@ -434,7 +532,7 @@ const LandingPage = ({ onEnterApp }) => {
             </div>
             <div className="flex items-center gap-6 text-sm text-zinc-500">
               <a href="https://github.com/camiliosalomanda/BTCTrust" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">GitHub</a>
-              <a href="#" className="hover:text-white transition-colors">Documentation</a>
+              <a href="/docs" className="hover:text-white transition-colors">Documentation</a>
               <a href="#" className="hover:text-white transition-colors">Support</a>
             </div>
           </div>
