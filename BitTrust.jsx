@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, Unlock, Shield, Clock, Users, FileText, Key, Wallet, ChevronRight, ChevronDown, Plus, Copy, Check, AlertTriangle, Eye, EyeOff, QrCode, Download, Settings, Home, PieChart, BookOpen, ArrowRight, Zap, Globe, RefreshCw, Timer, UserPlus, Trash2, Edit3, Save, X } from 'lucide-react';
+import { Lock, Unlock, Shield, Clock, Users, FileText, Key, Wallet, ChevronRight, ChevronDown, Plus, Copy, Check, AlertTriangle, Eye, EyeOff, QrCode, Download, Settings, Home, PieChart, BookOpen, ArrowRight, Zap, Globe, RefreshCw, Timer, UserPlus, Trash2, Edit3, Save, X, Package } from 'lucide-react';
 
 // Import the new Vault Creation Wizard
 import { VaultCreationWizard } from './src/vault/creation/wizard/VaultCreationWizard';
+
+// Import the Heir Kit Generator
+import HeirKitGenerator from './src/components/HeirKitGenerator';
 
 // ============================================
 // BITTRUST - SOVEREIGN BITCOIN INHERITANCE
@@ -35,6 +38,7 @@ const BitTrust = () => {
   const [showCreateWizard, setShowCreateWizard] = useState(false);
   const [selectedVault, setSelectedVault] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showHeirKitGenerator, setShowHeirKitGenerator] = useState(false);
   const [settings, setSettings] = useState({
     torEnabled: false,
     network: 'mainnet',
@@ -96,7 +100,7 @@ const BitTrust = () => {
         decoy: config.modifiers.includes('decoy')
       }
     };
-    
+
     setVaults(prev => [...prev, newVault]);
     setShowCreateWizard(false);
   };
@@ -121,22 +125,22 @@ const BitTrust = () => {
     </button>
   );
 
- // Sidebar
-const Sidebar = () => (
-  <div className="w-64 bg-zinc-900/80 backdrop-blur-xl border-r border-zinc-800 p-4 flex flex-col">
-    {/* Back to Landing (web only) */}
-    {!window.isElectron && (
-      <button
-        onClick={() => { localStorage.removeItem('bittrust:visited'); window.location.reload(); }}
-        className="flex items-center gap-2 px-2 py-2 mb-4 text-zinc-500 hover:text-white transition-colors text-sm"
-      >
-        <ChevronRight size={16} className="rotate-180" />
-        Back to Home
-      </button>
-    )}
-    
-    {/* Logo */}
-    <div className="flex items-center gap-3 px-2 mb-8">
+  // Sidebar
+  const Sidebar = () => (
+    <div className="w-64 bg-zinc-900/80 backdrop-blur-xl border-r border-zinc-800 p-4 flex flex-col">
+      {/* Back to Landing (web only) */}
+      {!window.isElectron && (
+        <button
+          onClick={() => { localStorage.removeItem('bittrust:visited'); window.location.reload(); }}
+          className="flex items-center gap-2 px-2 py-2 mb-4 text-zinc-500 hover:text-white transition-colors text-sm"
+        >
+          <ChevronRight size={16} className="rotate-180" />
+          Back to Home
+        </button>
+      )}
+
+      {/* Logo */}
+      <div className="flex items-center gap-3 px-2 mb-8">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
           <Shield size={24} className="text-black" />
         </div>
@@ -495,7 +499,6 @@ const Sidebar = () => (
               {showPrivateData ? 'Hide' : 'Show'} Details
             </button>
           </div>
-
           <div className="p-4 bg-zinc-950 rounded-xl font-mono text-sm">
             <code className="text-green-400">
               {showPrivateData
@@ -503,7 +506,6 @@ const Sidebar = () => (
                 : 'or(pk(...), and(thresh(...), after(...)))'}
             </code>
           </div>
-
           <p className="text-xs text-zinc-600 mt-3">
             This Miniscript allows you to spend at any time, or beneficiaries can spend after the timelock expires.
           </p>
@@ -518,7 +520,6 @@ const Sidebar = () => (
               Add
             </button>
           </div>
-
           <div className="space-y-3">
             {vault.beneficiaries.length > 0 ? vault.beneficiaries.map((beneficiary, i) => (
               <div key={i} className="flex items-center gap-4 p-4 bg-zinc-800/50 rounded-xl">
@@ -545,10 +546,17 @@ const Sidebar = () => (
         </div>
 
         {/* Actions */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <button className="flex items-center justify-center gap-2 p-4 bg-zinc-800 rounded-xl text-zinc-300 hover:bg-zinc-700 transition-colors">
             <Download size={18} />
             Export PSBT
+          </button>
+          <button 
+            onClick={() => setShowHeirKitGenerator(true)}
+            className="flex items-center justify-center gap-2 p-4 bg-orange-500 rounded-xl text-black font-medium hover:bg-orange-600 transition-colors"
+          >
+            <Package size={18} />
+            Generate Heir Kit
           </button>
           <button className="flex items-center justify-center gap-2 p-4 bg-zinc-800 rounded-xl text-zinc-300 hover:bg-zinc-700 transition-colors">
             <FileText size={18} />
@@ -689,7 +697,6 @@ const Sidebar = () => (
         {/* Family Tree Visualization */}
         <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-6">
           <h3 className="text-lg font-semibold text-white mb-6">Generational Distribution</h3>
-
           <div className="flex flex-col items-center">
             {/* You */}
             <div className="flex flex-col items-center">
@@ -811,7 +818,6 @@ const Sidebar = () => (
               </button>
             ))}
           </div>
-
           {selectedState && (
             <div className="mt-4 p-4 bg-zinc-800/50 rounded-xl">
               <div className="grid grid-cols-2 gap-4 text-sm">
@@ -847,9 +853,7 @@ const Sidebar = () => (
                 </div>
                 <div className="flex items-center gap-4">
                   <span className={`text-xs px-3 py-1 rounded-full ${
-                    doc.status === 'draft'
-                      ? 'bg-yellow-500/20 text-yellow-400'
-                      : 'bg-zinc-800 text-zinc-500'
+                    doc.status === 'draft' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-zinc-800 text-zinc-500'
                   }`}>
                     {doc.status === 'draft' ? 'Draft' : 'Not Started'}
                   </span>
@@ -1049,7 +1053,16 @@ const Sidebar = () => (
           onCancel={() => setShowCreateWizard(false)}
         />
       )}
+
       {showSettings && <SettingsModal />}
+
+      {showHeirKitGenerator && selectedVault && (
+        <HeirKitGenerator
+          vault={selectedVault}
+          beneficiaries={selectedVault.beneficiaries}
+          onClose={() => setShowHeirKitGenerator(false)}
+        />
+      )}
     </div>
   );
 };
