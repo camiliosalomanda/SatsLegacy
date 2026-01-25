@@ -18,9 +18,9 @@ const DocsPage = ({ onNavigate }) => {
       icon: Zap,
       color: 'orange',
       docs: [
-        { title: 'Quick Start Guide', href: '/docs/quick-start', desc: 'Get up and running in 10 minutes' },
-        { title: 'Installation', href: '/docs/installation', desc: 'Download and install BitTrust' },
-        { title: 'Your First Vault', href: '/docs/first-vault', desc: 'Create your first inheritance vault' },
+        { title: 'Quick Start Guide', href: '#/docs/quick-start', desc: 'Get up and running in 10 minutes' },
+        { title: 'Installation', href: '#/docs/installation', desc: 'Download and install BitTrust' },
+        { title: 'Your First Vault', href: '#/docs/first-vault', desc: 'Create your first inheritance vault' },
       ]
     },
     {
@@ -28,9 +28,9 @@ const DocsPage = ({ onNavigate }) => {
       icon: BookOpen,
       color: 'blue',
       docs: [
-        { title: 'The Sovereignty Problem', href: '/docs/sovereignty-problem', desc: 'Why custodial inheritance fails', featured: true },
-        { title: 'Miniscript & Timelocks', href: '/docs/miniscript-timelocks', desc: 'Bitcoin scripting for inheritance', featured: true },
-        { title: 'Key Distribution', href: '/docs/key-distribution', desc: 'Securely distribute keys to heirs', featured: true },
+        { title: 'The Sovereignty Problem', href: '#/docs/sovereignty-problem', desc: 'Why custodial inheritance fails', featured: true },
+        { title: 'Miniscript & Timelocks', href: '#/docs/miniscript-timelocks', desc: 'Bitcoin scripting for inheritance', featured: true },
+        { title: 'Key Distribution', href: '#/docs/key-distribution', desc: 'Securely distribute keys to heirs', featured: true },
       ]
     },
     {
@@ -38,10 +38,10 @@ const DocsPage = ({ onNavigate }) => {
       icon: Lock,
       color: 'purple',
       docs: [
-        { title: 'Timelock Vaults', href: '/docs/vault-timelock', desc: 'Time-based inheritance release' },
-        { title: 'Dead Man\'s Switch', href: '/docs/vault-deadman', desc: 'Proof-of-life based inheritance' },
-        { title: 'Multisig Decay', href: '/docs/vault-multisig', desc: 'Decaying quorum requirements' },
-        { title: 'Hybrid Vaults', href: '/docs/vault-hybrid', desc: 'Combine multiple conditions' },
+        { title: 'Timelock Vaults', href: '#/docs/vault-timelock', desc: 'Time-based inheritance release' },
+        { title: 'Dead Man\'s Switch', href: '#/docs/vault-deadman', desc: 'Proof-of-life based inheritance' },
+        { title: 'Multisig Decay', href: '#/docs/vault-multisig', desc: 'Decaying quorum requirements' },
+        { title: 'Hybrid Vaults', href: '#/docs/vault-hybrid', desc: 'Combine multiple conditions' },
       ]
     },
     {
@@ -49,10 +49,10 @@ const DocsPage = ({ onNavigate }) => {
       icon: Shield,
       color: 'green',
       docs: [
-        { title: 'Threat Model', href: '/docs/security-threats', desc: 'Understanding attack vectors' },
-        { title: 'Hardware Wallet Integration', href: '/docs/hardware-wallets', desc: 'Coldcard, Trezor, Ledger setup' },
-        { title: 'Backup Strategies', href: '/docs/backups', desc: 'Redundancy and recovery' },
-        { title: 'Duress Protection', href: '/docs/duress', desc: 'Coercion-resistant features' },
+        { title: 'Threat Model', href: '#/docs/security-threats', desc: 'Understanding attack vectors' },
+        { title: 'Hardware Wallet Integration', href: '#/docs/hardware-wallets', desc: 'Coldcard, Trezor, Ledger setup' },
+        { title: 'Backup Strategies', href: '#/docs/backups', desc: 'Redundancy and recovery' },
+        { title: 'Duress Protection', href: '#/docs/duress', desc: 'Coercion-resistant features' },
       ]
     },
     {
@@ -60,9 +60,9 @@ const DocsPage = ({ onNavigate }) => {
       icon: Globe,
       color: 'pink',
       docs: [
-        { title: 'Shamir\'s Secret Sharing', href: '/docs/shamir', desc: 'Split keys into shares' },
-        { title: 'Nostr Relay Backup', href: '/docs/nostr', desc: 'Censorship-resistant storage' },
-        { title: 'Tor Integration', href: '/docs/tor', desc: 'Privacy-preserving connections' },
+        { title: 'Shamir\'s Secret Sharing', href: '#/docs/shamir', desc: 'Split keys into shares' },
+        { title: 'Nostr Relay Backup', href: '#/docs/nostr', desc: 'Censorship-resistant storage' },
+        { title: 'Tor Integration', href: '#/docs/tor', desc: 'Privacy-preserving connections' },
       ]
     },
     {
@@ -70,9 +70,9 @@ const DocsPage = ({ onNavigate }) => {
       icon: FileText,
       color: 'yellow',
       docs: [
-        { title: 'Estate Planning Integration', href: '/docs/estate-planning', desc: 'Working with traditional planning' },
-        { title: 'Legal Document Templates', href: '/docs/legal-templates', desc: 'State-specific templates' },
-        { title: 'Heir Communication', href: '/docs/heir-communication', desc: 'Preparing your beneficiaries' },
+        { title: 'Estate Planning Integration', href: '#/docs/estate-planning', desc: 'Working with traditional planning' },
+        { title: 'Legal Document Templates', href: '#/docs/legal-templates', desc: 'State-specific templates' },
+        { title: 'Heir Communication', href: '#/docs/heir-communication', desc: 'Preparing your beneficiaries' },
       ]
     },
   ];
@@ -96,7 +96,7 @@ const DocsPage = ({ onNavigate }) => {
       <header className="border-b border-zinc-800">
         <div className="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <a href="/" className="flex items-center gap-3">
+            <a href="#/" className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
                 <Shield size={24} className="text-black" />
               </div>
@@ -115,7 +115,7 @@ const DocsPage = ({ onNavigate }) => {
               <Github size={20} />
             </a>
             <a 
-              href="/"
+              href="#/"
               className="px-4 py-2 bg-zinc-800 text-white rounded-lg hover:bg-zinc-700 transition-colors"
             >
               Back to App
@@ -155,14 +155,14 @@ const DocsPage = ({ onNavigate }) => {
         <div className="max-w-6xl mx-auto px-6 py-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <a 
-              href="/docs/quick-start"
+              href="#/docs/quick-start"
               className="flex items-center gap-3 p-4 bg-zinc-800/50 border border-zinc-700 rounded-lg hover:border-orange-500/30 transition-colors group"
             >
               <Zap size={20} className="text-orange-400" />
               <span className="font-medium group-hover:text-orange-400 transition-colors">Quick Start</span>
             </a>
             <a 
-              href="/whitepaper"
+              href="#/whitepaper"
               className="flex items-center gap-3 p-4 bg-zinc-800/50 border border-zinc-700 rounded-lg hover:border-orange-500/30 transition-colors group"
             >
               <FileText size={20} className="text-orange-400" />
@@ -242,7 +242,7 @@ const DocsPage = ({ onNavigate }) => {
               Download BitTrust
             </a>
             <a 
-              href="/"
+              href="#/"
               className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-zinc-800 text-white font-semibold rounded-lg hover:bg-zinc-700 transition-colors"
             >
               Try Web Demo
