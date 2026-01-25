@@ -8,10 +8,10 @@ import { VaultCreationWizard } from './src/vault/creation/wizard/VaultCreationWi
 import HeirKitGenerator from './src/components/HeirKitGenerator';
 
 // ============================================
-// BITTRUST - SOVEREIGN BITCOIN INHERITANCE
+// SatsLegacy - SOVEREIGN BITCOIN INHERITANCE
 // ============================================
 
-const BitTrust = () => {
+const SatsLegacy = () => {
   const [currentView, setCurrentView] = useState('dashboard');
   const [vaults, setVaults] = useState([
     {
@@ -131,7 +131,7 @@ const BitTrust = () => {
       {/* Back to Landing (web only) */}
       {!window.isElectron && (
         <button
-          onClick={() => { localStorage.removeItem('bittrust:visited'); window.location.reload(); }}
+          onClick={() => { localStorage.removeItem('SatsLegacy:visited'); window.location.reload(); }}
           className="flex items-center gap-2 px-2 py-2 mb-4 text-zinc-500 hover:text-white transition-colors text-sm"
         >
           <ChevronRight size={16} className="rotate-180" />
@@ -145,7 +145,7 @@ const BitTrust = () => {
           <Shield size={24} className="text-black" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-white tracking-tight">BitTrust</h1>
+          <h1 className="text-xl font-bold text-white tracking-tight">SatsLegacy</h1>
           <p className="text-xs text-zinc-500">Sovereign Inheritance</p>
         </div>
       </div>
@@ -895,7 +895,7 @@ const BitTrust = () => {
       {
         category: 'Privacy',
         items: [
-          { title: 'Running Tor with BitTrust', desc: 'Protect your network privacy', duration: '8 min' },
+          { title: 'Running Tor with SatsLegacy', desc: 'Protect your network privacy', duration: '8 min' },
           { title: 'Silent Payments for Heirs', desc: 'Give beneficiaries unlinkable addresses', duration: '12 min' },
           { title: 'PayJoin for Family Transfers', desc: 'Break transaction heuristics', duration: '15 min' },
         ]
@@ -1067,4 +1067,4 @@ const BitTrust = () => {
   );
 };
 
-export default BitTrust;
+export default SatsLegacy;
