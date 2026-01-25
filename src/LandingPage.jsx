@@ -457,7 +457,7 @@ const LandingPage = ({ onEnterApp }) => {
                 of traditional estate planning and third-party trust.
               </p>
               <a
-                href="/docs/sovereignty-problem"
+                href="#/docs/sovereignty-problem"
                 className="inline-flex items-center gap-2 text-orange-400 text-sm group-hover:text-orange-300 transition-colors"
               >
                 Learn more
@@ -476,7 +476,7 @@ const LandingPage = ({ onEnterApp }) => {
                 spending policies, and dead man's switches explained.
               </p>
               <a
-                href="/docs/miniscript-timelocks"
+                href="#/docs/miniscript-timelocks"
                 className="inline-flex items-center gap-2 text-orange-400 text-sm group-hover:text-orange-300 transition-colors"
               >
                 Learn more
@@ -495,7 +495,7 @@ const LandingPage = ({ onEnterApp }) => {
                 Shamir's Secret Sharing, and encrypted heir kits.
               </p>
               <a
-                href="/docs/key-distribution"
+                href="#/docs/key-distribution"
                 className="inline-flex items-center gap-2 text-orange-400 text-sm group-hover:text-orange-300 transition-colors"
               >
                 Learn more
