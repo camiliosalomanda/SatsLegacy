@@ -6,19 +6,20 @@ import DocsPage from './docs/DocsPage.jsx'
 import SovereigntyProblemPage from './docs/SovereigntyProblemPage.jsx'
 import MiniscriptTimelocksPage from './docs/MiniscriptTimelocksPage.jsx'
 import KeyDistributionPage from './docs/KeyDistributionPage.jsx'
+import HeirClaimPortal from './components/HeirClaimPortal.jsx'
 import './index.css'
 
 const isElectron = typeof window !== 'undefined' && window.isElectron;
 
 function useHashRouter() {
   const [hash, setHash] = useState(window.location.hash || '#/');
-  
+
   useEffect(() => {
     const handleHashChange = () => { setHash(window.location.hash || '#/'); window.scrollTo(0, 0); };
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
-  
+
   return hash;
 }
 
@@ -45,6 +46,11 @@ function App() {
     setShowApp(false);
     localStorage.removeItem('bittrust:visited');
   };
+
+  // Heir Claim Portal route - accessible without login
+  if (hash === '#/claim' || hash.startsWith('#/claim/')) {
+    return <HeirClaimPortal />;
+  }
 
   // Documentation routes
   if (hash === '#/docs' || hash === '#/docs/') return <DocsPage />;
