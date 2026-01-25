@@ -14,7 +14,7 @@ import {
 const LandingPage = ({ onEnterApp }) => {
   const [showAllFeatures, setShowAllFeatures] = useState(false);
 
-  const DOWNLOAD_URL_WINDOWS = 'https://github.com/camiliosalomanda/BTCTrust/releases/download/v1.0.0/SatsLegacy.Setup.1.0.0.exe';
+  const DOWNLOAD_URL_WINDOWS = 'https://github.com/camiliosalomanda/BTCTrust/releases/download/v1.1.0/SatsLegacy.Setup.1.0.0.exe';
   const DOWNLOAD_URL_MAC = '#'; // Coming soon
   const DOWNLOAD_URL_LINUX = '#'; // Coming soon
 
