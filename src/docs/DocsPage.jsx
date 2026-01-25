@@ -107,7 +107,7 @@ const DocsPage = ({ onNavigate }) => {
           </div>
           <div className="flex items-center gap-4">
             <a 
-              href="https://github.com/camiliosalomanda/BTCTrust" 
+              href="https://github.com/camiliosalomanda/SatsLegacy" 
               target="_blank" 
               rel="noopener noreferrer"
               className="text-zinc-400 hover:text-white transition-colors"
@@ -169,7 +169,7 @@ const DocsPage = ({ onNavigate }) => {
               <span className="font-medium group-hover:text-orange-400 transition-colors">Whitepaper</span>
             </a>
             <a 
-              href="https://github.com/camiliosalomanda/BTCTrust"
+              href="https://github.com/camiliosalomanda/SatsLegacy"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-3 p-4 bg-zinc-800/50 border border-zinc-700 rounded-lg hover:border-orange-500/30 transition-colors group"
