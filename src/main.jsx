@@ -2,23 +2,36 @@ import React, { useState, useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
 import BitTrust from '../BitTrust.jsx'
 import LandingPage from './LandingPage.jsx'
+import DocsPage from './docs/DocsPage.jsx'
+import SovereigntyProblemPage from './docs/SovereigntyProblemPage.jsx'
+import MiniscriptTimelocksPage from './docs/MiniscriptTimelocksPage.jsx'
+import KeyDistributionPage from './docs/KeyDistributionPage.jsx'
 import './index.css'
 
-// Check if running in Electron
 const isElectron = typeof window !== 'undefined' && window.isElectron;
+
+function useHashRouter() {
+  const [hash, setHash] = useState(window.location.hash || '#/');
+  
+  useEffect(() => {
+    const handleHashChange = () => setHash(window.location.hash || '#/');
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+  
+  return hash;
+}
 
 function App() {
   const [showApp, setShowApp] = useState(false);
+  const hash = useHashRouter();
 
-  // In Electron, skip landing page and go straight to app
   useEffect(() => {
     if (isElectron) {
       setShowApp(true);
     }
-    
-    // Check if user has visited before (web only)
     const hasVisited = localStorage.getItem('bittrust:visited');
-    if (hasVisited) {
+    if (hasVisited && (hash === '#/' || hash === '')) {
       setShowApp(true);
     }
   }, []);
@@ -30,12 +43,20 @@ function App() {
 
   const handleBackToLanding = () => {
     setShowApp(false);
+    localStorage.removeItem('bittrust:visited');
   };
 
-  if (showApp) {
-    return <BitTrust onBackToLanding={handleBackToLanding} />;
+  // Documentation routes
+  if (hash === '#/docs' || hash === '#/docs/') return <DocsPage />;
+  if (hash === '#/docs/sovereignty-problem') return <SovereigntyProblemPage />;
+  if (hash === '#/docs/miniscript-timelocks') return <MiniscriptTimelocksPage />;
+  if (hash === '#/docs/key-distribution') return <KeyDistributionPage />;
+  if (hash === '#/whitepaper') {
+    window.location.href = '/BitTrust-Whitepaper.pdf';
+    return null;
   }
 
+  if (showApp) return <BitTrust onBackToLanding={handleBackToLanding} />;
   return <LandingPage onEnterApp={handleEnterApp} />;
 }
 
