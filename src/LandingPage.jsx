@@ -433,7 +433,7 @@ const LandingPage = ({ onEnterApp }) => {
                     Download PDF
                   </a>
                   <a
-                    href="/whitepaper"
+                    href="#/whitepaper"
                     className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-zinc-700 text-white font-semibold rounded-lg hover:bg-zinc-600 transition-colors"
                   >
                     <ExternalLink size={18} />
