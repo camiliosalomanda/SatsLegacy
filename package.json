@@ -1,9 +1,9 @@
 {
-  "name": "bittrust",
+  "name": "SatsLegacy",
   "version": "1.0.0",
   "description": "Sovereign Bitcoin Inheritance - No custody, no fees, no third parties",
   "main": "electron/main.cjs",
-  "author": "BitTrust",
+  "author": "SatsLegacy",
   "license": "MIT",
   "private": true,
   "type": "module",
@@ -38,9 +38,9 @@
     "wait-on": "^7.2.0"
   },
   "build": {
-    "appId": "com.bittrust.app",
-    "productName": "BitTrust",
-    "copyright": "Copyright © 2025 BitTrust",
+    "appId": "com.SatsLegacy.app",
+    "productName": "SatsLegacy",
+    "copyright": "Copyright © 2025 SatsLegacy",
     "directories": {
       "output": "release",
       "buildResources": "build"

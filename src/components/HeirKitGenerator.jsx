@@ -58,7 +58,7 @@ const HeirKitGenerator = ({ vault, beneficiaries, onClose }) => {
     const shareAmount = (parseFloat(vaultData.balance) * selectedBeneficiary.percentage / 100).toFixed(4);
     const instructions = generateRecoveryInstructions();
     
-    return `<!DOCTYPE html><html><head><title>BitTrust Heir Kit - ${selectedBeneficiary.name}</title>
+    return `<!DOCTYPE html><html><head><title>SatsLegacy Heir Kit - ${selectedBeneficiary.name}</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#1a1a1a;padding:40px;max-width:800px;margin:0 auto}
@@ -84,16 +84,16 @@ h3{font-size:16px;margin:16px 0 8px}
 .footer{margin-top:40px;padding-top:20px;border-top:1px solid #e5e7eb;text-align:center;color:#666;font-size:12px}
 @media print{body{padding:20px}.step{break-inside:avoid}h2{break-after:avoid}}
 </style></head><body>
-<h1>🔐 BitTrust Heir Kit</h1>
+<h1>🔐 SatsLegacy Heir Kit</h1>
 <p class="subtitle">Prepared for: <strong>${selectedBeneficiary.name}</strong> | Generated: ${new Date().toLocaleDateString()}</p>
 <div class="warning"><div class="warning-title">⚠️ IMPORTANT: Store this document securely</div><div>This kit contains sensitive information about your Bitcoin inheritance. Keep it in a safe, safety deposit box, or other secure location.</div></div>
 ${kitOptions.includeVaultDocs ? `<h2>Vault Information</h2><div class="info-grid"><span class="info-label">Vault Name:</span><span>${vaultData.name}</span><span class="info-label">Vault Type:</span><span>${vaultData.scriptType || 'Timelock'}</span><span class="info-label">Unlock Date:</span><span>${unlockDate}</span><span class="info-label">Total Balance:</span><span>${vaultData.balance} BTC</span></div><h3>Vault Address</h3><div class="address">${vaultData.address}</div>` : ''}
 ${kitOptions.includeKeyInfo ? `<h2>Your Inheritance Share</h2><div class="info-grid"><span class="info-label">Your Percentage:</span><span>${selectedBeneficiary.percentage}%</span><span class="info-label">Your Amount:</span><span><strong>${shareAmount} BTC</strong></span></div>${selectedBeneficiary.pubkey ? `<h3>Your Public Key</h3><div class="address">${selectedBeneficiary.pubkey}</div>` : ''}` : ''}
 ${kitOptions.includeRecoveryInstructions ? `<h2>How to Claim Your Inheritance</h2><p style="margin-bottom:16px;color:#666">Follow these steps carefully after the timelock has expired:</p>${instructions.map(inst => `<div class="step"><div class="step-number">${inst.step}</div><div class="step-content"><div class="step-title">${inst.title}</div><div class="step-desc">${inst.description}</div><div class="step-simple">💡 ${inst.simple}</div></div></div>`).join('')}` : ''}
 ${kitOptions.includeCoHeirContacts && beneficiaryList.length > 1 ? `<h2>Other Beneficiaries</h2><p>You may need to coordinate with these co-heirs:</p><ul style="margin:12px 0 12px 24px">${beneficiaryList.filter(b => b.name !== selectedBeneficiary.name).map(b => `<li><strong>${b.name}</strong> (${b.percentage}%)</li>`).join('')}</ul>` : ''}
-<div class="resources"><h2 style="margin-top:0">Important Resources</h2><div class="resource"><div class="resource-name">Sparrow Wallet Download</div><div class="resource-url">sparrowwallet.com/download</div></div><div class="resource"><div class="resource-name">Bitcoin Block Explorer</div><div class="resource-url">mempool.space</div></div><div class="resource"><div class="resource-name">BitTrust Claim Portal</div><div class="resource-url">btc-trust.vercel.app/#/claim</div></div></div>
+<div class="resources"><h2 style="margin-top:0">Important Resources</h2><div class="resource"><div class="resource-name">Sparrow Wallet Download</div><div class="resource-url">sparrowwallet.com/download</div></div><div class="resource"><div class="resource-name">Bitcoin Block Explorer</div><div class="resource-url">mempool.space</div></div><div class="resource"><div class="resource-name">SatsLegacy Claim Portal</div><div class="resource-url">btc-trust.vercel.app/#/claim</div></div></div>
 <div class="warning" style="background:#f0f9ff;border-color:#3b82f6"><div class="warning-title">🔒 Security Reminders</div><ul style="margin:8px 0 0 20px"><li>Never share your hardware wallet PIN or seed phrase</li><li>Verify all addresses on your hardware wallet screen</li><li>When in doubt, ask a trusted technical friend for help</li></ul></div>
-<div class="footer"><p>BitTrust - Sovereign Bitcoin Inheritance</p><p>Not your keys, not your coins. Not your script, not your inheritance.</p></div>
+<div class="footer"><p>SatsLegacy - Sovereign Bitcoin Inheritance</p><p>Not your keys, not your coins. Not your script, not your inheritance.</p></div>
 </body></html>`;
   };
 

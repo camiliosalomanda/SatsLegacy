@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
-import BitTrust from '../BitTrust.jsx'
+import SatsLegacy from '../SatsLegacy.jsx'
 import LandingPage from './LandingPage.jsx'
 import DocsPage from './docs/DocsPage.jsx'
 import SovereigntyProblemPage from './docs/SovereigntyProblemPage.jsx'
@@ -31,20 +31,20 @@ function App() {
     if (isElectron) {
       setShowApp(true);
     }
-    const hasVisited = localStorage.getItem('bittrust:visited');
+    const hasVisited = localStorage.getItem('SatsLegacy:visited');
     if (hasVisited && (hash === '#/' || hash === '')) {
       setShowApp(true);
     }
   }, []);
 
   const handleEnterApp = () => {
-    localStorage.setItem('bittrust:visited', 'true');
+    localStorage.setItem('SatsLegacy:visited', 'true');
     setShowApp(true);
   };
 
   const handleBackToLanding = () => {
     setShowApp(false);
-    localStorage.removeItem('bittrust:visited');
+    localStorage.removeItem('SatsLegacy:visited');
   };
 
   // Heir Claim Portal route - accessible without login
@@ -58,11 +58,11 @@ function App() {
   if (hash === '#/docs/miniscript-timelocks') return <MiniscriptTimelocksPage />;
   if (hash === '#/docs/key-distribution') return <KeyDistributionPage />;
   if (hash === '#/whitepaper') {
-    window.location.href = '/BitTrust-Whitepaper.pdf';
+    window.location.href = '/SatsLegacy-Whitepaper.pdf';
     return null;
   }
 
-  if (showApp) return <BitTrust onBackToLanding={handleBackToLanding} />;
+  if (showApp) return <SatsLegacy onBackToLanding={handleBackToLanding} />;
   return <LandingPage onEnterApp={handleEnterApp} />;
 }
 

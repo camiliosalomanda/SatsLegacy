@@ -21,7 +21,7 @@ const SovereigntyProblemPage = () => {
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
                 <Shield size={24} className="text-black" />
               </div>
-              <span className="text-xl font-bold">BitTrust</span>
+              <span className="text-xl font-bold">SatsLegacy</span>
             </a>
             <span className="text-zinc-600">/</span>
             <a href="#/docs" className="text-zinc-400 hover:text-white transition-colors">Docs</a>
@@ -281,7 +281,7 @@ const SovereigntyProblemPage = () => {
 
             <div className="p-6 bg-gradient-to-r from-orange-500/10 to-transparent border border-orange-500/20 rounded-xl">
               <p className="text-lg text-zinc-200">
-                <strong className="text-orange-400">BitTrust</strong> leverages these Bitcoin-native capabilities to create 
+                <strong className="text-orange-400">SatsLegacy</strong> leverages these Bitcoin-native capabilities to create 
                 inheritance vaults that execute automatically—no custodians, no lawyers, no trust required.
               </p>
             </div>
@@ -313,7 +313,7 @@ const SovereigntyProblemPage = () => {
       {/* Footer */}
       <footer className="border-t border-zinc-800">
         <div className="max-w-4xl mx-auto px-6 py-8 text-center text-sm text-zinc-600">
-          <p>© 2025 BitTrust. Open source under MIT License.</p>
+          <p>© 2025 SatsLegacy. Open source under MIT License.</p>
         </div>
       </footer>
     </div>

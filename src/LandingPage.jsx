@@ -1,5 +1,5 @@
 /**
- * BitTrust Landing Page
+ * SatsLegacy Landing Page
  *
  * Marketing + Download page for the desktop app
  */
@@ -14,7 +14,7 @@ import {
 const LandingPage = ({ onEnterApp }) => {
   const [showAllFeatures, setShowAllFeatures] = useState(false);
 
-  const DOWNLOAD_URL_WINDOWS = 'https://github.com/camiliosalomanda/BTCTrust/releases/download/v1.0.0/BitTrust.Setup.1.0.0.exe';
+  const DOWNLOAD_URL_WINDOWS = 'https://github.com/camiliosalomanda/BTCTrust/releases/download/v1.0.0/SatsLegacy.Setup.1.0.0.exe';
   const DOWNLOAD_URL_MAC = '#'; // Coming soon
   const DOWNLOAD_URL_LINUX = '#'; // Coming soon
 
@@ -38,7 +38,7 @@ const LandingPage = ({ onEnterApp }) => {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
               <Shield size={24} className="text-black" />
             </div>
-            <span className="text-xl font-bold">BitTrust</span>
+            <span className="text-xl font-bold">SatsLegacy</span>
           </div>
           <div className="flex items-center gap-6">
             <a href="#features" className="text-zinc-400 hover:text-white transition-colors">Features</a>
@@ -159,7 +159,7 @@ const LandingPage = ({ onEnterApp }) => {
           </div>
           <div>
             <h2 className="text-3xl font-bold mb-6">
-              The BitTrust<br />
+              The SatsLegacy<br />
               <span className="text-green-400">Solution</span>
             </h2>
             <div className="space-y-4">
@@ -285,7 +285,7 @@ const LandingPage = ({ onEnterApp }) => {
                 ))}
               </ul>
               <a
-                href="https://bittrust-pay.lndyn.com"
+                href="https://pay.satslegacy.io/apps/2L3STy2vfnfXfJrNk2CFANmDM1fw/pos"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block w-full py-3 text-center bg-zinc-700 text-white rounded-lg hover:bg-zinc-600 transition-colors"
@@ -311,7 +311,7 @@ const LandingPage = ({ onEnterApp }) => {
                 ))}
               </ul>
               <a
-                href="https://bittrust-pay.lndyn.com"
+                href="https://pay.satslegacy.io/apps/2L3STy2vfnfXfJrNk2CFANmDM1fw/pos"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block w-full py-3 text-center bg-gradient-to-r from-orange-500 to-orange-600 text-black font-semibold rounded-lg hover:opacity-90 transition-opacity"
@@ -326,7 +326,7 @@ const LandingPage = ({ onEnterApp }) => {
       {/* Download */}
       <section id="download" className="max-w-6xl mx-auto px-6 py-24">
         <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold mb-4">Download BitTrust</h2>
+          <h2 className="text-4xl font-bold mb-4">Download SatsLegacy</h2>
           <p className="text-zinc-400">Available for Windows. Mac and Linux coming soon.</p>
         </div>
 
@@ -394,14 +394,14 @@ const LandingPage = ({ onEnterApp }) => {
                 <FileText size={40} className="text-black" />
               </div>
               <div className="flex-1 text-center md:text-left">
-                <h3 className="text-2xl font-bold mb-2">BitTrust Whitepaper</h3>
+                <h3 className="text-2xl font-bold mb-2">SatsLegacy Whitepaper</h3>
                 <p className="text-zinc-400 mb-4">
                   The complete technical guide to trustless Bitcoin inheritance. Covers Miniscript
                   policies, timelock mechanics, key distribution strategies, and security threat models.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
                   <a
-                    href="/BitTrust-Whitepaper.pdf"
+                    href="/SatsLegacy-Whitepaper.pdf"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-black font-semibold rounded-lg hover:opacity-90 transition-opacity"
@@ -500,7 +500,7 @@ const LandingPage = ({ onEnterApp }) => {
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
                 <Shield size={18} className="text-black" />
               </div>
-              <span className="font-bold">BitTrust</span>
+              <span className="font-bold">SatsLegacy</span>
               <span className="text-zinc-600">|</span>
               <span className="text-sm text-zinc-500">Sovereign Bitcoin Inheritance</span>
             </div>
@@ -513,7 +513,7 @@ const LandingPage = ({ onEnterApp }) => {
           </div>
           <div className="mt-8 pt-8 border-t border-zinc-800 text-center text-sm text-zinc-600">
             <p>Not your keys, not your coins. Not your script, not your inheritance.</p>
-            <p className="mt-2">© 2025 BitTrust. Open source under MIT License.</p>
+            <p className="mt-2">© 2025 SatsLegacy. Open source under MIT License.</p>
           </div>
         </div>
       </footer>

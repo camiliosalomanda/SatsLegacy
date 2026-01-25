@@ -22,7 +22,7 @@ const KeyDistributionPage = () => {
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
                 <Shield size={24} className="text-black" />
               </div>
-              <span className="text-xl font-bold">BitTrust</span>
+              <span className="text-xl font-bold">SatsLegacy</span>
             </a>
             <span className="text-zinc-600">/</span>
             <a href="#/docs" className="text-zinc-400 hover:text-white transition-colors">Docs</a>
@@ -180,7 +180,7 @@ const KeyDistributionPage = () => {
                   <div>
                     <h4 className="font-semibold text-white mb-1">Create the Vault</h4>
                     <p className="text-zinc-400 text-sm">
-                      Using BitTrust, create the vault with your key and all heir xpubs. The software 
+                      Using SatsLegacy, create the vault with your key and all heir xpubs. The software 
                       generates the Miniscript policy and vault address. Verify on your hardware wallet.
                     </p>
                   </div>
@@ -225,7 +225,7 @@ const KeyDistributionPage = () => {
             
             <p className="text-zinc-300 leading-relaxed mb-6">
               For users who cannot conduct in-person ceremonies or who want additional redundancy, 
-              BitTrust supports <strong className="text-white">Shamir's Secret Sharing (SSS)</strong> for key distribution.
+              SatsLegacy supports <strong className="text-white">Shamir's Secret Sharing (SSS)</strong> for key distribution.
             </p>
 
             <div className="p-6 bg-blue-500/10 border border-blue-500/20 rounded-xl mb-6">
@@ -420,7 +420,7 @@ const KeyDistributionPage = () => {
                   'Purchase hardware wallets for all heirs',
                   'Prepare secure location (no cameras/phones)',
                   'Create printed instructions for heirs',
-                  'Test BitTrust vault creation workflow',
+                  'Test SatsLegacy vault creation workflow',
                 ].map((item, i) => (
                   <label key={i} className="flex items-center gap-3 text-zinc-300 text-sm">
                     <input type="checkbox" className="rounded bg-zinc-700 border-zinc-600" />
@@ -435,7 +435,7 @@ const KeyDistributionPage = () => {
                   'Each heir initializes their hardware wallet',
                   'Each heir securely stores their seed phrase',
                   'Collect extended public keys (xpubs) from each heir',
-                  'Create and verify vault in BitTrust',
+                  'Create and verify vault in SatsLegacy',
                   'Fund vault with small test amount',
                 ].map((item, i) => (
                   <label key={i} className="flex items-center gap-3 text-zinc-300 text-sm">
@@ -490,7 +490,7 @@ const KeyDistributionPage = () => {
       {/* Footer */}
       <footer className="border-t border-zinc-800">
         <div className="max-w-4xl mx-auto px-6 py-8 text-center text-sm text-zinc-600">
-          <p>© 2025 BitTrust. Open source under MIT License.</p>
+          <p>© 2025 SatsLegacy. Open source under MIT License.</p>
         </div>
       </footer>
     </div>

@@ -21,7 +21,7 @@ const MiniscriptTimelocksPage = () => {
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
                 <Shield size={24} className="text-black" />
               </div>
-              <span className="text-xl font-bold">BitTrust</span>
+              <span className="text-xl font-bold">SatsLegacy</span>
             </a>
             <span className="text-zinc-600">/</span>
             <a href="#/docs" className="text-zinc-400 hover:text-white transition-colors">Docs</a>
@@ -243,7 +243,7 @@ const MiniscriptTimelocksPage = () => {
             
             <p className="text-zinc-300 leading-relaxed mb-6">
               By combining keys, timelocks, and logic operators, we can express sophisticated 
-              inheritance conditions. Here are the core patterns BitTrust uses:
+              inheritance conditions. Here are the core patterns SatsLegacy uses:
             </p>
 
             <h3 className="text-xl font-semibold text-white mb-4">Simple Timelock Inheritance</h3>
@@ -391,7 +391,7 @@ const MiniscriptTimelocksPage = () => {
       {/* Footer */}
       <footer className="border-t border-zinc-800">
         <div className="max-w-4xl mx-auto px-6 py-8 text-center text-sm text-zinc-600">
-          <p>© 2025 BitTrust. Open source under MIT License.</p>
+          <p>© 2025 SatsLegacy. Open source under MIT License.</p>
         </div>
       </footer>
     </div>

@@ -1,5 +1,5 @@
 /**
- * BitTrust Documentation Hub
+ * SatsLegacy Documentation Hub
  * 
  * Central documentation index with links to all guides and resources
  */
@@ -19,7 +19,7 @@ const DocsPage = ({ onNavigate }) => {
       color: 'orange',
       docs: [
         { title: 'Quick Start Guide', href: '#/docs/quick-start', desc: 'Get up and running in 10 minutes' },
-        { title: 'Installation', href: '#/docs/installation', desc: 'Download and install BitTrust' },
+        { title: 'Installation', href: '#/docs/installation', desc: 'Download and install SatsLegacy' },
         { title: 'Your First Vault', href: '#/docs/first-vault', desc: 'Create your first inheritance vault' },
       ]
     },
@@ -100,7 +100,7 @@ const DocsPage = ({ onNavigate }) => {
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
                 <Shield size={24} className="text-black" />
               </div>
-              <span className="text-xl font-bold">BitTrust</span>
+              <span className="text-xl font-bold">SatsLegacy</span>
             </a>
             <span className="text-zinc-600">|</span>
             <span className="text-zinc-400">Documentation</span>
@@ -128,7 +128,7 @@ const DocsPage = ({ onNavigate }) => {
       <section className="border-b border-zinc-800 bg-zinc-900/50">
         <div className="max-w-6xl mx-auto px-6 py-16 text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
-            BitTrust Documentation
+            SatsLegacy Documentation
           </h1>
           <p className="text-xl text-zinc-400 max-w-2xl mx-auto mb-8">
             Learn how to create trustless Bitcoin inheritance using native scripting. 
@@ -178,7 +178,7 @@ const DocsPage = ({ onNavigate }) => {
               <span className="font-medium group-hover:text-orange-400 transition-colors">Source Code</span>
             </a>
             <a 
-              href="/BitTrust-Whitepaper.pdf"
+              href="/SatsLegacy-Whitepaper.pdf"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-3 p-4 bg-zinc-800/50 border border-zinc-700 rounded-lg hover:border-orange-500/30 transition-colors group"
@@ -233,13 +233,13 @@ const DocsPage = ({ onNavigate }) => {
       <section className="border-t border-zinc-800 bg-zinc-900/50">
         <div className="max-w-6xl mx-auto px-6 py-16 text-center">
           <h2 className="text-2xl font-bold mb-4">Ready to secure your legacy?</h2>
-          <p className="text-zinc-400 mb-8">Download BitTrust and create your first inheritance vault.</p>
+          <p className="text-zinc-400 mb-8">Download SatsLegacy and create your first inheritance vault.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a 
               href="/#download"
               className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-black font-semibold rounded-lg hover:opacity-90 transition-opacity"
             >
-              Download BitTrust
+              Download SatsLegacy
             </a>
             <a 
               href="#/"
@@ -255,7 +255,7 @@ const DocsPage = ({ onNavigate }) => {
       <footer className="border-t border-zinc-800">
         <div className="max-w-6xl mx-auto px-6 py-8 text-center text-sm text-zinc-600">
           <p>Not your keys, not your coins. Not your script, not your inheritance.</p>
-          <p className="mt-2">© 2025 BitTrust. Open source under MIT License.</p>
+          <p className="mt-2">© 2025 SatsLegacy. Open source under MIT License.</p>
         </div>
       </footer>
     </div>

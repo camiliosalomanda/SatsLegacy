@@ -90,7 +90,7 @@ const HeirClaimPortal = () => {
               <Shield className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-bold">BitTrust</h1>
+              <h1 className="text-lg font-bold">SatsLegacy</h1>
               <p className="text-xs text-zinc-500">Inheritance Claim Portal</p>
             </div>
           </div>
@@ -673,7 +673,7 @@ const HeirClaimPortal = () => {
       {/* Footer */}
       <footer className="border-t border-zinc-800 mt-12">
         <div className="max-w-4xl mx-auto px-6 py-6 text-center text-sm text-zinc-500">
-          <p>BitTrust - Sovereign Bitcoin Inheritance</p>
+          <p>SatsLegacy - Sovereign Bitcoin Inheritance</p>
           <p className="mt-1">
             Need help? Contact your co-heirs or visit{' '}
             <a href="#" className="text-orange-400 hover:text-orange-300">support documentation</a>
