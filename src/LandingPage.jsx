@@ -35,9 +35,7 @@ const LandingPage = ({ onEnterApp }) => {
         {/* Nav */}
         <nav className="relative z-10 max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
-              <Shield size={24} className="text-black" />
-            </div>
+            <img src="/favicon.svg" alt="SatsLegacy" className="w-10 h-10" />
             <span className="text-xl font-bold">SatsLegacy</span>
           </div>
           <div className="flex items-center gap-6">
@@ -493,9 +491,7 @@ const LandingPage = ({ onEnterApp }) => {
         <div className="max-w-6xl mx-auto px-6 py-12">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
-                <Shield size={18} className="text-black" />
-              </div>
+              <img src="/favicon.svg" alt="SatsLegacy" className="w-8 h-8" />
               <span className="font-bold">SatsLegacy</span>
               <span className="text-zinc-600">|</span>
               <span className="text-sm text-zinc-500">Sovereign Bitcoin Inheritance</span>
