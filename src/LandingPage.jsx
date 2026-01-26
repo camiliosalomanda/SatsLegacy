@@ -285,12 +285,12 @@ const LandingPage = ({ onEnterApp }) => {
                 ))}
               </ul>
               <a
-                href="https://pay.satslegacy.io/apps/2L3STy2vfnfXfJrNk2CFANmDM1fw/pos"
+                href="https://x.com/SatsLegacy" target="_blank" rel="noopener noreferrer"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block w-full py-3 text-center bg-zinc-700 text-white rounded-lg hover:bg-zinc-600 transition-colors"
               >
-                Buy with Bitcoin
+                Join Waitlist
               </a>
             </div>
 
@@ -311,12 +311,12 @@ const LandingPage = ({ onEnterApp }) => {
                 ))}
               </ul>
               <a
-                href="https://pay.satslegacy.io/apps/2L3STy2vfnfXfJrNk2CFANmDM1fw/pos"
+                href="https://x.com/SatsLegacy" target="_blank" rel="noopener noreferrer"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block w-full py-3 text-center bg-gradient-to-r from-orange-500 to-orange-600 text-black font-semibold rounded-lg hover:opacity-90 transition-opacity"
               >
-                Buy with Bitcoin
+                Join Waitlist
               </a>
             </div>
           </div>
