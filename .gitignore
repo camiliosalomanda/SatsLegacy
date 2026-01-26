@@ -3,3 +3,6 @@ dist/
 release/
 .DS_Store
 *.log
+
+# Private - kept in SatsLegacy-private repo
+license-server/
