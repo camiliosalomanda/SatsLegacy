@@ -86,6 +86,9 @@ const HeirClaimPortal = () => {
       <header className="border-b border-zinc-800">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
+            <a href="#/" className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors mr-4">
+              <ChevronLeft size={20} />
+            </a>
             <div className="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center">
               <Shield className="w-5 h-5 text-white" />
             </div>
