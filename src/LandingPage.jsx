@@ -20,12 +20,18 @@ const LandingPage = ({ onEnterApp }) => {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
+      {/* Banner Header */}
+      <div className="w-full">
+        <img src="/banner.png" alt="SatsLegacy - Sovereign Bitcoin Inheritance" className="w-full h-auto" />
+      </div>
+      
       {/* Hero Section */}
       <header className="relative overflow-hidden">
-        {/* Background Banner */}
-        <div className="absolute inset-0 pointer-events-none">
-          <img src="/banner.png" alt="" className="w-full h-full object-cover opacity-40" />
-          <div className="absolute inset-0 bg-gradient-to-b from-zinc-950/50 via-zinc-950/70 to-zinc-950" />
+        {/* Background Effects */}
+        <div className="absolute inset-0 opacity-30 pointer-events-none">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `radial-gradient(circle at 30% 20%, rgba(247, 147, 26, 0.15) 0%, transparent 50%)`,
+          }} />
         </div>
 
         {/* Nav */}
