@@ -20,11 +20,6 @@ const LandingPage = ({ onEnterApp }) => {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
-      {/* Banner Header */}
-      <div className="w-full">
-        <img src="/banner.png" alt="SatsLegacy - Sovereign Bitcoin Inheritance" className="w-full h-auto" />
-      </div>
-      
       {/* Hero Section */}
       <header className="relative overflow-hidden">
         {/* Background Effects */}
@@ -32,12 +27,17 @@ const LandingPage = ({ onEnterApp }) => {
           <div className="absolute inset-0" style={{
             backgroundImage: `radial-gradient(circle at 30% 20%, rgba(247, 147, 26, 0.15) 0%, transparent 50%)`,
           }} />
+          <div className="absolute inset-0" style={{
+            backgroundImage: `radial-gradient(circle at 70% 80%, rgba(247, 147, 26, 0.1) 0%, transparent 40%)`,
+          }} />
         </div>
 
         {/* Nav */}
         <nav className="relative z-10 max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/logo.svg" alt="SatsLegacy" className="w-10 h-10 rounded-xl" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
+              <Shield size={24} className="text-black" />
+            </div>
             <span className="text-xl font-bold">SatsLegacy</span>
           </div>
           <div className="flex items-center gap-6">
