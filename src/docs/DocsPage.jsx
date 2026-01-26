@@ -236,7 +236,7 @@ const DocsPage = ({ onNavigate }) => {
           <p className="text-zinc-400 mb-8">Download SatsLegacy and create your first inheritance vault.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a 
-              href="/#download"
+              href="#/"
               className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-black font-semibold rounded-lg hover:opacity-90 transition-opacity"
             >
               Download SatsLegacy
