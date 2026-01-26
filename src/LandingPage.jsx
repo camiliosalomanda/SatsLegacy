@@ -14,7 +14,7 @@ import {
 const LandingPage = ({ onEnterApp }) => {
   const [showAllFeatures, setShowAllFeatures] = useState(false);
 
-  const DOWNLOAD_URL_WINDOWS = 'https://github.com/camiliosalomanda/BTCTrust/releases/download/v1.1.0/SatsLegacy.Setup.1.0.0.exe';
+  const DOWNLOAD_URL_WINDOWS = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.1.0/SatsLegacy.Setup.1.0.0.exe';
   const DOWNLOAD_URL_MAC = '#'; // Coming soon
   const DOWNLOAD_URL_LINUX = '#'; // Coming soon
 
@@ -360,7 +360,7 @@ const LandingPage = ({ onEnterApp }) => {
 
         <div className="mt-12 text-center">
           <a
-            href="https://github.com/camiliosalomanda/BTCTrust"
+            href="https://github.com/camiliosalomanda/SatsLegacy"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 text-zinc-400 hover:text-white transition-colors"
@@ -501,7 +501,7 @@ const LandingPage = ({ onEnterApp }) => {
               <span className="text-sm text-zinc-500">Sovereign Bitcoin Inheritance</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-zinc-500">
-              <a href="https://github.com/camiliosalomanda/BTCTrust" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">GitHub</a>
+              <a href="https://github.com/camiliosalomanda/SatsLegacy" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">GitHub</a>
               <a href="#/docs" className="hover:text-white transition-colors">Documentation</a>
               <a href="#/claim" className="hover:text-orange-400 transition-colors">Heir Portal</a>
               <a href="#" className="hover:text-white transition-colors">Support</a>
@@ -509,7 +509,7 @@ const LandingPage = ({ onEnterApp }) => {
           </div>
           <div className="mt-8 pt-8 border-t border-zinc-800 text-center text-sm text-zinc-600">
             <p>Not your keys, not your coins. Not your script, not your inheritance.</p>
-            <p className="mt-2">© 2025 SatsLegacy. Open source under MIT License.</p>
+            <p className="mt-2">© 2026 SatsLegacy. Open source under MIT License.</p>
           </div>
         </div>
       </footer>
