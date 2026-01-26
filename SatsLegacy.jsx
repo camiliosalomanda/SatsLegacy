@@ -879,25 +879,25 @@ const SatsLegacy = () => {
       {
         category: 'Fundamentals',
         items: [
-          { title: 'Why Bitcoin for Inheritance', desc: 'Understand the unique properties that make BTC ideal for generational wealth', duration: '10 min' },
-          { title: 'Self-Custody Basics', desc: 'Learn the fundamentals of holding your own keys', duration: '15 min' },
-          { title: 'Hardware Wallet Guide', desc: 'Compare Coldcard, Trezor, Ledger and more', duration: '20 min' },
+          { title: 'The Sovereignty Problem', desc: 'Why custodial inheritance betrays Bitcoin principles', duration: '10 min', href: '#/docs/sovereignty-problem' },
+          { title: 'Quick Start Guide', desc: 'Get up and running in 10 minutes', duration: '10 min', href: '#/docs/quick-start' },
+          { title: 'Hardware Wallet Integration', desc: 'Coldcard, Trezor, Ledger and more', duration: '15 min', href: '#/docs/hardware-wallets' },
         ]
       },
       {
         category: 'Technical',
         items: [
-          { title: 'Understanding Time Locks (CLTV)', desc: 'How Bitcoin scripts enforce time-based conditions', duration: '12 min' },
-          { title: 'Multi-Signature Explained', desc: 'Distribute trust across multiple keys', duration: '15 min' },
-          { title: 'Miniscript Deep Dive', desc: 'Advanced scripting for complex inheritance', duration: '25 min' },
+          { title: 'Timelock Vaults', desc: 'How Bitcoin scripts enforce time-based conditions', duration: '12 min', href: '#/docs/vault-timelock' },
+          { title: 'Multisig Inheritance', desc: 'Distribute trust across multiple keys', duration: '15 min', href: '#/docs/vault-multisig' },
+          { title: 'Miniscript & Timelocks', desc: 'Advanced scripting for complex inheritance', duration: '20 min', href: '#/docs/miniscript-timelocks' },
         ]
       },
       {
-        category: 'Privacy',
+        category: 'Security & Privacy',
         items: [
-          { title: 'Running Tor with SatsLegacy', desc: 'Protect your network privacy', duration: '8 min' },
-          { title: 'Silent Payments for Heirs', desc: 'Give beneficiaries unlinkable addresses', duration: '12 min' },
-          { title: 'PayJoin for Family Transfers', desc: 'Break transaction heuristics', duration: '15 min' },
+          { title: 'Threat Model', desc: 'Understanding attack vectors and mitigations', duration: '12 min', href: '#/docs/security-threats' },
+          { title: 'Backup Strategies', desc: 'Redundancy and disaster recovery', duration: '10 min', href: '#/docs/backups' },
+          { title: 'Tor Integration', desc: 'Protect your network privacy', duration: '8 min', href: '#/docs/tor' },
         ]
       },
     ];
@@ -913,11 +913,7 @@ const SatsLegacy = () => {
           <div key={category.category}>
             <h3 className="text-lg font-semibold text-white mb-4">{category.category}</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {category.items.map((item, i) => (
-                <div
-                  key={i}
-                  className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-6 hover:border-orange-500/50 transition-colors cursor-pointer group"
-                >
+              {category.items.map((item, i) => (<a key={i} href={item.href} className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-6 hover:border-orange-500/50 transition-colors cursor-pointer group block">
                   <div className="flex items-center justify-between mb-4">
                     <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center group-hover:bg-orange-500/10 transition-colors">
                       <BookOpen size={18} className="text-zinc-500 group-hover:text-orange-400 transition-colors" />
@@ -926,16 +922,7 @@ const SatsLegacy = () => {
                   </div>
                   <h4 className="text-white font-medium mb-2 group-hover:text-orange-400 transition-colors">{item.title}</h4>
                   <p className="text-sm text-zinc-500">{item.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  // Settings Modal
+                </a>))}</div></div>))}</div>);};// Settings Modal
   const SettingsModal = () => (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-lg">
