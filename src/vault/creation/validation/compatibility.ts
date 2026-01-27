@@ -204,7 +204,7 @@ function validateLogicRequirements(
   const req = LOGIC_REQUIREMENTS[logic]
 
   // Check hard requirements
-  for (const required of req.requires) {
+  for (const required of req.requires || []) {
     if (!infrastructure.includes(required)) {
       errors.push({
         code: 'LOGIC_MISSING_INFRA',
@@ -614,3 +614,4 @@ export const PRESET_BUNDLES: PresetBundle[] = [
 export function getPresetBundle(id: string): PresetBundle | undefined {
   return PRESET_BUNDLES.find(b => b.id === id)
 }
+

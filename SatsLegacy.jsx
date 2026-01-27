@@ -129,9 +129,7 @@ const SatsLegacy = () => {
 
       {/* Logo */}
       <div className="flex items-center gap-3 px-2 mb-8">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
-          <Shield size={24} className="text-black" />
-        </div>
+        <img src="./logo.jpg" alt="SatsLegacy" className="w-10 h-10 rounded-full" />
         <div>
           <h1 className="text-xl font-bold text-white tracking-tight">SatsLegacy</h1>
           <p className="text-xs text-zinc-500">Sovereign Inheritance</p>
@@ -1095,3 +1093,4 @@ const SatsLegacy = () => {
 };
 
 export default SatsLegacy;
+
