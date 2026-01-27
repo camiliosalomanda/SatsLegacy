@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Lock, Unlock, Shield, Clock, Users, FileText, Key, Wallet, ChevronRight, ChevronDown, Plus, Copy, Check, AlertTriangle, Eye, EyeOff, QrCode, Download, Settings, Home, PieChart, BookOpen, ArrowRight, Zap, Globe, RefreshCw, Timer, UserPlus, Trash2, Edit3, Save, X, Package, Send } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Lock, Unlock, Shield, Clock, Users, FileText, Key, Wallet, ChevronRight, ChevronDown, Plus, Copy, Check, AlertTriangle, Eye, EyeOff, QrCode, Download, Settings, Home, PieChart, BookOpen, ArrowRight, Zap, Globe, RefreshCw, Timer, UserPlus, Trash2, Edit3, Save, X, Package, Send, Loader } from 'lucide-react';
 
 // Import the new Vault Creation Wizard
 import { VaultCreationWizard } from './src/vault/creation/wizard/VaultCreationWizard';
@@ -11,21 +11,104 @@ import HeirKitGenerator from './src/components/HeirKitGenerator';
 // SatsLegacy - SOVEREIGN BITCOIN INHERITANCE
 // ============================================
 
+// Check if running in Electron
+const isElectron = window.isElectron || false;
+const electronAPI = window.electronAPI || null;
+
+// ============================================
+// API UTILITIES
+// ============================================
+
+// Fetch BTC price from multiple sources with fallback
+const fetchBTCPrice = async () => {
+  const sources = [
+    {
+      url: 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd',
+      parse: (data) => data.bitcoin.usd
+    },
+    {
+      url: 'https://api.coinbase.com/v2/prices/BTC-USD/spot',
+      parse: (data) => parseFloat(data.data.amount)
+    },
+    {
+      url: 'https://blockchain.info/ticker',
+      parse: (data) => data.USD.last
+    }
+  ];
+
+  for (const source of sources) {
+    try {
+      const response = await fetch(source.url);
+      if (response.ok) {
+        const data = await response.json();
+        return source.parse(data);
+      }
+    } catch (e) {
+      console.warn(`Price fetch failed from ${source.url}:`, e);
+    }
+  }
+  
+  // Fallback price if all APIs fail
+  console.warn('All price APIs failed, using fallback');
+  return 100000;
+};
+
+// Fetch address balance from blockchain
+const fetchAddressBalance = async (address, network = 'mainnet') => {
+  if (!address || address.startsWith('bc1qtest') || address.startsWith('bc1qsimple') || address.startsWith('bc1qresilient') || address.startsWith('bc1qguardian') || address.startsWith('bc1qhostile')) {
+    // Skip fake test addresses
+    return 0;
+  }
+
+  const apis = network === 'mainnet' ? [
+    `https://blockstream.info/api/address/${address}`,
+    `https://mempool.space/api/address/${address}`
+  ] : [
+    `https://blockstream.info/testnet/api/address/${address}`,
+    `https://mempool.space/testnet/api/address/${address}`
+  ];
+
+  for (const url of apis) {
+    try {
+      const response = await fetch(url);
+      if (response.ok) {
+        const data = await response.json();
+        // Balance in satoshis, convert to BTC
+        const funded = data.chain_stats?.funded_txo_sum || 0;
+        const spent = data.chain_stats?.spent_txo_sum || 0;
+        return (funded - spent) / 100000000;
+      }
+    } catch (e) {
+      console.warn(`Balance fetch failed from ${url}:`, e);
+    }
+  }
+  
+  return 0;
+};
+
+// ============================================
+// MAIN COMPONENT
+// ============================================
+
 const SatsLegacy = () => {
   const [currentView, setCurrentView] = useState('dashboard');
-  // Start with empty vaults - no demo data
   const [vaults, setVaults] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [showCreateWizard, setShowCreateWizard] = useState(false);
   const [selectedVault, setSelectedVault] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showHeirKitGenerator, setShowHeirKitGenerator] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(null); // vault to delete
+  const [showDeleteModal, setShowDeleteModal] = useState(null);
+  const [showAddBeneficiary, setShowAddBeneficiary] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(null); // For vault creation password
+  const [pendingVaultData, setPendingVaultData] = useState(null); // Temp storage for vault being created
   const [settings, setSettings] = useState({
     torEnabled: false,
     network: 'mainnet',
     electrumServer: 'electrum.blockstream.info:50002',
     theme: 'dark'
   });
+  const [licenseInfo, setLicenseInfo] = useState({ licensed: false, tier: 'free' });
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [simulatorData, setSimulatorData] = useState({
     btcAmount: 1,
@@ -34,8 +117,149 @@ const SatsLegacy = () => {
     heirs: 2
   });
 
-  // Simulated BTC price
-  const btcPrice = 100000;
+  // Real BTC price state
+  const [btcPrice, setBtcPrice] = useState(100000);
+  const [priceLoading, setPriceLoading] = useState(true);
+  const [lastPriceUpdate, setLastPriceUpdate] = useState(null);
+
+  // ============================================
+  // INITIALIZATION & DATA LOADING
+  // ============================================
+
+  // Load vaults on startup
+  useEffect(() => {
+    const loadInitialData = async () => {
+      setIsLoading(true);
+      
+      // Load BTC price
+      try {
+        const price = await fetchBTCPrice();
+        setBtcPrice(price);
+        setLastPriceUpdate(new Date());
+      } catch (e) {
+        console.error('Failed to fetch BTC price:', e);
+      }
+      setPriceLoading(false);
+
+      // Load vaults from Electron storage
+      if (isElectron && electronAPI) {
+        try {
+          const result = await electronAPI.vault.list();
+          if (result.success && result.vaults) {
+            // Load metadata for each vault
+            const loadedVaults = result.vaults.map(meta => ({
+              id: meta.vault_id,
+              vault_id: meta.vault_id,
+              name: meta.name,
+              description: meta.description || '',
+              balance: 0, // Will be updated by balance fetch
+              balanceUSD: 0,
+              scriptType: meta.logic?.primary || 'timelock',
+              lockDate: meta.lockDate ? new Date(meta.lockDate) : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+              beneficiaries: meta.beneficiaries || [],
+              status: 'active',
+              address: meta.address || '',
+              lastActivity: meta.updated_at ? new Date(meta.updated_at) : new Date(),
+              inactivityTrigger: meta.inactivityTrigger || 365,
+              infrastructure: meta.infrastructure || ['local'],
+              logic: meta.logic || { primary: 'timelock', gates: [] },
+              modifiers: meta.modifiers || {}
+            }));
+            setVaults(loadedVaults);
+            
+            // Fetch balances for each vault
+            updateVaultBalances(loadedVaults);
+          }
+        } catch (e) {
+          console.error('Failed to load vaults:', e);
+        }
+
+        // Load settings
+        try {
+          const settingsResult = await electronAPI.settings.load();
+          if (settingsResult.success && settingsResult.settings) {
+            setSettings(prev => ({ ...prev, ...settingsResult.settings }));
+          }
+        } catch (e) {
+          console.error('Failed to load settings:', e);
+        }
+
+        // Check license
+        try {
+          const licenseResult = await electronAPI.license.check();
+          if (licenseResult.success) {
+            setLicenseInfo({
+              licensed: licenseResult.licensed,
+              tier: licenseResult.tier || 'free',
+              email: licenseResult.email
+            });
+          }
+        } catch (e) {
+          console.error('Failed to check license:', e);
+        }
+      }
+      
+      setIsLoading(false);
+    };
+
+    loadInitialData();
+  }, []);
+
+  // Refresh BTC price every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const price = await fetchBTCPrice();
+        setBtcPrice(price);
+        setLastPriceUpdate(new Date());
+        // Update vault USD values
+        setVaults(prev => prev.map(v => ({
+          ...v,
+          balanceUSD: v.balance * price
+        })));
+      } catch (e) {
+        console.error('Failed to refresh BTC price:', e);
+      }
+    }, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Update vault balances from blockchain
+  const updateVaultBalances = useCallback(async (vaultList) => {
+    const updatedVaults = await Promise.all(
+      vaultList.map(async (vault) => {
+        if (vault.address) {
+          const balance = await fetchAddressBalance(vault.address, settings.network);
+          return {
+            ...vault,
+            balance,
+            balanceUSD: balance * btcPrice
+          };
+        }
+        return vault;
+      })
+    );
+    setVaults(updatedVaults);
+  }, [btcPrice, settings.network]);
+
+  // Refresh balances manually
+  const handleRefreshBalances = useCallback(async () => {
+    setPriceLoading(true);
+    try {
+      const price = await fetchBTCPrice();
+      setBtcPrice(price);
+      setLastPriceUpdate(new Date());
+      await updateVaultBalances(vaults);
+    } catch (e) {
+      console.error('Failed to refresh:', e);
+    }
+    setPriceLoading(false);
+  }, [vaults, updateVaultBalances]);
+
+  // ============================================
+  // VAULT OPERATIONS
+  // ============================================
 
   // Copy to clipboard
   const copyToClipboard = (text) => {
@@ -54,22 +278,22 @@ const SatsLegacy = () => {
     return vault.inactivityTrigger || 365;
   };
 
-  // Handle new vault creation from the sovereign wizard
+  // Handle vault creation from wizard - step 1: collect config
   const handleCreateVault = (config, name, description) => {
+    // Store vault data and show password modal
     const newVault = {
-      id: Date.now(),
+      vault_id: crypto.randomUUID(),
       name: name,
       description: description,
       balance: 0,
       balanceUSD: 0,
       scriptType: config.primaryLogic,
-      lockDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // Default 1 year
+      lockDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
       beneficiaries: [],
       status: 'active',
-      address: 'bc1q' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
+      address: '', // Will be generated from script
       lastActivity: new Date(),
       inactivityTrigger: 365,
-      // Sovereign config
       infrastructure: config.infrastructure,
       logic: {
         primary: config.primaryLogic,
@@ -79,19 +303,117 @@ const SatsLegacy = () => {
         staggered: config.modifiers.includes('staggered'),
         multiBeneficiary: config.modifiers.includes('multi_beneficiary'),
         decoy: config.modifiers.includes('decoy')
-      }
+      },
+      created_at: new Date().toISOString()
     };
 
-    setVaults(prev => [...prev, newVault]);
-    setShowCreateWizard(false);
+    if (isElectron && electronAPI) {
+      // Show password modal for encryption
+      setPendingVaultData(newVault);
+      setShowPasswordModal('create');
+      setShowCreateWizard(false);
+    } else {
+      // Web mode - just add to state (no persistence)
+      setVaults(prev => [...prev, { ...newVault, id: newVault.vault_id }]);
+      setShowCreateWizard(false);
+    }
+  };
+
+  // Handle vault creation - step 2: save with password
+  const handleSaveVaultWithPassword = async (password) => {
+    if (!pendingVaultData || !isElectron || !electronAPI) return;
+
+    try {
+      const result = await electronAPI.vault.create(pendingVaultData, password);
+      if (result.success) {
+        // Add to local state
+        setVaults(prev => [...prev, { 
+          ...pendingVaultData, 
+          id: result.vaultId,
+          vault_id: result.vaultId 
+        }]);
+        setPendingVaultData(null);
+        setShowPasswordModal(null);
+      } else {
+        alert('Failed to create vault: ' + result.error);
+      }
+    } catch (e) {
+      console.error('Vault creation error:', e);
+      alert('Failed to create vault');
+    }
   };
 
   // Handle vault deletion
-  const handleDeleteVault = (vaultId) => {
-    setVaults(prev => prev.filter(v => v.id !== vaultId));
+  const handleDeleteVault = async (vaultId) => {
+    if (isElectron && electronAPI) {
+      try {
+        const result = await electronAPI.vault.delete(vaultId);
+        if (result.success) {
+          setVaults(prev => prev.filter(v => v.id !== vaultId && v.vault_id !== vaultId));
+        } else {
+          alert('Failed to delete vault: ' + result.error);
+        }
+      } catch (e) {
+        console.error('Delete error:', e);
+        alert('Failed to delete vault');
+      }
+    } else {
+      // Web mode
+      setVaults(prev => prev.filter(v => v.id !== vaultId));
+    }
     setShowDeleteModal(null);
     setSelectedVault(null);
   };
+
+  // Save settings
+  const handleSaveSettings = async (newSettings) => {
+    setSettings(newSettings);
+    if (isElectron && electronAPI) {
+      try {
+        await electronAPI.settings.save(newSettings);
+      } catch (e) {
+        console.error('Failed to save settings:', e);
+      }
+    }
+  };
+
+  // Add beneficiary to vault
+  const handleAddBeneficiary = (beneficiary) => {
+    if (!selectedVault) return;
+    
+    const updatedVault = {
+      ...selectedVault,
+      beneficiaries: [...selectedVault.beneficiaries, beneficiary]
+    };
+    
+    // Update local state
+    setVaults(prev => prev.map(v => 
+      (v.id === selectedVault.id || v.vault_id === selectedVault.vault_id) ? updatedVault : v
+    ));
+    setSelectedVault(updatedVault);
+    setShowAddBeneficiary(false);
+  };
+
+  // Remove beneficiary from vault
+  const handleRemoveBeneficiary = (index) => {
+    if (!selectedVault) return;
+    
+    const updatedBeneficiaries = selectedVault.beneficiaries.filter((_, i) => i !== index);
+    const updatedVault = {
+      ...selectedVault,
+      beneficiaries: updatedBeneficiaries
+    };
+    
+    setVaults(prev => prev.map(v => 
+      (v.id === selectedVault.id || v.vault_id === selectedVault.vault_id) ? updatedVault : v
+    ));
+    setSelectedVault(updatedVault);
+  };
+
+
+  // ============================================
+  // UI COMPONENTS
+  // ============================================
 
   // Navigation
   const NavItem = ({ icon: Icon, label, view, badge }) => (
@@ -117,7 +439,7 @@ const SatsLegacy = () => {
   const Sidebar = () => (
     <div className="w-64 bg-zinc-900/80 backdrop-blur-xl border-r border-zinc-800 p-4 flex flex-col">
       {/* Back to Landing (web only) */}
-      {!window.isElectron && (
+      {!isElectron && (
         <button
           onClick={() => { localStorage.removeItem('SatsLegacy:visited'); window.location.reload(); }}
           className="flex items-center gap-2 px-2 py-2 mb-4 text-zinc-500 hover:text-white transition-colors text-sm"
@@ -154,9 +476,15 @@ const SatsLegacy = () => {
               {settings.torEnabled ? '🧅 Tor Active' : '● Connected'}
             </span>
           </div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-zinc-500">BTC Price</span>
+            <span className="text-xs text-zinc-300 font-mono">
+              {priceLoading ? '...' : `$${btcPrice.toLocaleString()}`}
+            </span>
+          </div>
           <div className="flex items-center justify-between">
-            <span className="text-xs text-zinc-500">Block Height</span>
-            <span className="text-xs text-zinc-300 font-mono">878,234</span>
+            <span className="text-xs text-zinc-500">Mode</span>
+            <span className="text-xs text-zinc-300 capitalize">{settings.network}</span>
           </div>
         </div>
         <button
@@ -170,14 +498,107 @@ const SatsLegacy = () => {
     </div>
   );
 
-  // Vault Card Component (for Vaults view)
+  // Password Modal for vault encryption
+  const PasswordModal = ({ mode, onSubmit, onCancel }) => {
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [error, setError] = useState('');
+
+    const handleSubmit = () => {
+      if (mode === 'create') {
+        if (password.length < 8) {
+          setError('Password must be at least 8 characters');
+          return;
+        }
+        if (password !== confirmPassword) {
+          setError('Passwords do not match');
+          return;
+        }
+      }
+      onSubmit(password);
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md">
+          <div className="flex items-center justify-between p-6 border-b border-zinc-800">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                <Key size={20} className="text-orange-400" />
+              </div>
+              <h2 className="text-xl font-bold text-white">
+                {mode === 'create' ? 'Encrypt Vault' : 'Unlock Vault'}
+              </h2>
+            </div>
+            <button onClick={onCancel} className="p-2 rounded-lg hover:bg-zinc-800 transition-colors">
+              <X size={20} className="text-zinc-500" />
+            </button>
+          </div>
+
+          <div className="p-6 space-y-4">
+            <p className="text-zinc-400 text-sm">
+              {mode === 'create' 
+                ? 'Choose a strong password to encrypt your vault. This password will be required to access or modify your vault.'
+                : 'Enter your password to unlock this vault.'}
+            </p>
+
+            <div>
+              <label className="block text-sm text-zinc-400 mb-2">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                placeholder="••••••••"
+                className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white focus:outline-none focus:border-orange-500"
+              />
+            </div>
+
+            {mode === 'create' && (
+              <div>
+                <label className="block text-sm text-zinc-400 mb-2">Confirm Password</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => { setConfirmPassword(e.target.value); setError(''); }}
+                  placeholder="••••••••"
+                  className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white focus:outline-none focus:border-orange-500"
+                />
+              </div>
+            )}
+
+            {error && (
+              <p className="text-red-400 text-sm">{error}</p>
+            )}
+
+            <div className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-xl">
+              <div className="flex items-start gap-3">
+                <AlertTriangle size={20} className="text-orange-400 mt-0.5" />
+                <p className="text-sm text-zinc-300">
+                  <strong className="text-orange-400">Important:</strong> There is no password recovery. 
+                  If you forget this password, your vault data cannot be recovered.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={handleSubmit}
+              className="w-full py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-black font-semibold rounded-xl hover:opacity-90 transition-opacity"
+            >
+              {mode === 'create' ? 'Create Encrypted Vault' : 'Unlock'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Vault Card Component
   const VaultCard = ({ vault, showDelete = false }) => {
     const daysUntil = getDaysUntilUnlock(vault);
     const progress = vault.scriptType === 'timelock'
       ? Math.min(100, ((730 - daysUntil) / 730) * 100)
       : Math.min(100, ((vault.inactivityTrigger - daysUntil) / vault.inactivityTrigger) * 100);
 
-    // Get infrastructure badges
     const getInfraBadges = () => {
       if (!vault.infrastructure) return null;
       return (
@@ -200,7 +621,6 @@ const SatsLegacy = () => {
 
     return (
       <div className="bg-zinc-900/60 backdrop-blur border border-zinc-800 rounded-2xl p-6 hover:border-orange-500/50 transition-all duration-300 group relative">
-        {/* Delete button */}
         {showDelete && (
           <button
             onClick={(e) => { e.stopPropagation(); setShowDeleteModal(vault); }}
@@ -211,10 +631,7 @@ const SatsLegacy = () => {
           </button>
         )}
 
-        <div 
-          onClick={() => setSelectedVault(vault)}
-          className="cursor-pointer"
-        >
+        <div onClick={() => setSelectedVault(vault)} className="cursor-pointer">
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-600/10 border border-orange-500/30 flex items-center justify-center">
@@ -229,13 +646,11 @@ const SatsLegacy = () => {
             <ChevronRight size={20} className="text-zinc-600 group-hover:text-orange-400 transition-colors mt-2" />
           </div>
 
-          {/* Balance */}
           <div className="mb-4">
-            <p className="text-3xl font-bold text-white">{vault.balance} <span className="text-lg text-zinc-500">BTC</span></p>
+            <p className="text-3xl font-bold text-white">{vault.balance.toFixed(8)} <span className="text-lg text-zinc-500">BTC</span></p>
             <p className="text-sm text-zinc-500">${vault.balanceUSD.toLocaleString()} USD</p>
           </div>
 
-          {/* Time Lock Progress */}
           <div className="mb-4">
             <div className="flex items-center justify-between text-xs mb-2">
               <span className="text-zinc-500">Time Lock Progress</span>
@@ -249,7 +664,6 @@ const SatsLegacy = () => {
             </div>
           </div>
 
-          {/* Beneficiaries Preview */}
           <div className="flex items-center gap-2">
             <Users size={14} className="text-zinc-500" />
             <span className="text-xs text-zinc-500">{vault.beneficiaries.length} beneficiaries</span>
@@ -265,6 +679,105 @@ const SatsLegacy = () => {
       </div>
     );
   };
+  // Add Beneficiary Modal
+  const AddBeneficiaryModal = () => {
+    const [name, setName] = useState('');
+    const [percentage, setPercentage] = useState('');
+    const [pubkey, setPubkey] = useState('');
+    const [error, setError] = useState('');
+
+    const currentTotal = selectedVault?.beneficiaries.reduce((sum, b) => sum + b.percentage, 0) || 0;
+    const maxPercentage = 100 - currentTotal;
+
+    const handleSubmit = () => {
+      if (!name.trim()) {
+        setError('Name is required');
+        return;
+      }
+      const pct = parseInt(percentage);
+      if (isNaN(pct) || pct <= 0 || pct > maxPercentage) {
+        setError('Percentage must be between 1 and ' + maxPercentage);
+        return;
+      }
+      if (!pubkey.trim()) {
+        setError('Public key or xpub is required');
+        return;
+      }
+
+      handleAddBeneficiary({
+        name: name.trim(),
+        percentage: pct,
+        pubkey: pubkey.trim()
+      });
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md">
+          <div className="flex items-center justify-between p-6 border-b border-zinc-800">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                <UserPlus size={20} className="text-orange-400" />
+              </div>
+              <h2 className="text-xl font-bold text-white">Add Beneficiary</h2>
+            </div>
+            <button onClick={() => setShowAddBeneficiary(false)} className="p-2 rounded-lg hover:bg-zinc-800 transition-colors">
+              <X size={20} className="text-zinc-500" />
+            </button>
+          </div>
+
+          <div className="p-6 space-y-4">
+            <div>
+              <label className="block text-sm text-zinc-400 mb-2">Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => { setName(e.target.value); setError(''); }}
+                placeholder="e.g., Sarah (Daughter)"
+                className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white focus:outline-none focus:border-orange-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm text-zinc-400 mb-2">Percentage ({maxPercentage}% remaining)</label>
+              <input
+                type="number"
+                value={percentage}
+                onChange={(e) => { setPercentage(e.target.value); setError(''); }}
+                placeholder="e.g., 50"
+                min="1"
+                max={maxPercentage}
+                className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white focus:outline-none focus:border-orange-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm text-zinc-400 mb-2">Public Key or xpub</label>
+              <input
+                type="text"
+                value={pubkey}
+                onChange={(e) => { setPubkey(e.target.value); setError(''); }}
+                placeholder="xpub6..."
+                className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white font-mono text-sm focus:outline-none focus:border-orange-500"
+              />
+              <p className="text-xs text-zinc-600 mt-2">Get this from the beneficiary's hardware wallet</p>
+            </div>
+
+            {error && <p className="text-red-400 text-sm">{error}</p>}
+
+            <button
+              onClick={handleSubmit}
+              className="w-full py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-black font-semibold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+            >
+              <UserPlus size={18} />
+              Add Beneficiary
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
 
   // Delete Vault Modal
   const DeleteVaultModal = ({ vault }) => {
@@ -273,8 +786,6 @@ const SatsLegacy = () => {
     const hasFunds = vault.balance > 0;
 
     const handleSweepAndDelete = () => {
-      // In production: generate PSBT to sweep funds to sweepAddress
-      // For now, just simulate
       console.log(`Sweeping ${vault.balance} BTC to ${sweepAddress}`);
       alert(`PSBT generated to sweep ${vault.balance} BTC to ${sweepAddress}. Sign with your hardware wallet, then delete the vault.`);
     };
@@ -289,10 +800,7 @@ const SatsLegacy = () => {
               </div>
               <h2 className="text-xl font-bold text-white">Delete Vault</h2>
             </div>
-            <button
-              onClick={() => setShowDeleteModal(null)}
-              className="p-2 rounded-lg hover:bg-zinc-800 transition-colors"
-            >
+            <button onClick={() => setShowDeleteModal(null)} className="p-2 rounded-lg hover:bg-zinc-800 transition-colors">
               <X size={20} className="text-zinc-500" />
             </button>
           </div>
@@ -301,7 +809,7 @@ const SatsLegacy = () => {
             <div className="p-4 bg-zinc-800/50 rounded-xl">
               <p className="text-white font-medium">{vault.name}</p>
               <p className="text-sm text-zinc-500 mt-1">
-                Balance: <span className={hasFunds ? 'text-orange-400 font-medium' : 'text-zinc-400'}>{vault.balance} BTC</span>
+                Balance: <span className={hasFunds ? 'text-orange-400 font-medium' : 'text-zinc-400'}>{vault.balance.toFixed(8)} BTC</span>
               </p>
             </div>
 
@@ -369,7 +877,7 @@ const SatsLegacy = () => {
                 </div>
 
                 <button
-                  onClick={() => handleDeleteVault(vault.id)}
+                  onClick={() => handleDeleteVault(vault.id || vault.vault_id)}
                   disabled={confirmText !== vault.name}
                   className="w-full py-3 bg-red-500 text-white font-semibold rounded-xl hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
@@ -384,7 +892,7 @@ const SatsLegacy = () => {
     );
   };
 
-  // Dashboard View - Stats and Activity only
+  // Dashboard View
   const DashboardView = () => {
     const totalBTC = vaults.reduce((sum, v) => sum + v.balance, 0);
     const totalUSD = totalBTC * btcPrice;
@@ -392,13 +900,21 @@ const SatsLegacy = () => {
 
     return (
       <div className="space-y-6">
-        {/* Header */}
-        <div>
-          <h2 className="text-2xl font-bold text-white">Welcome back</h2>
-          <p className="text-zinc-500">Your Bitcoin legacy is secure</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-white">Welcome back</h2>
+            <p className="text-zinc-500">Your Bitcoin legacy is secure</p>
+          </div>
+          <button
+            onClick={handleRefreshBalances}
+            disabled={priceLoading}
+            className="flex items-center gap-2 px-3 py-2 text-zinc-400 hover:text-white transition-colors"
+          >
+            <RefreshCw size={16} className={priceLoading ? 'animate-spin' : ''} />
+            <span className="text-sm">Refresh</span>
+          </button>
         </div>
 
-        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-zinc-900/60 backdrop-blur border border-zinc-800 rounded-2xl p-6">
             <div className="flex items-center gap-3 mb-4">
@@ -434,7 +950,6 @@ const SatsLegacy = () => {
           </div>
         </div>
 
-        {/* Quick Actions */}
         {vaults.length === 0 && (
           <div className="bg-gradient-to-r from-orange-500/10 to-orange-600/5 border border-orange-500/30 rounded-2xl p-6">
             <div className="flex items-center gap-4">
@@ -456,13 +971,12 @@ const SatsLegacy = () => {
           </div>
         )}
 
-        {/* Recent Activity */}
         <div className="bg-zinc-900/60 backdrop-blur border border-zinc-800 rounded-2xl p-6">
           <h3 className="text-lg font-semibold text-white mb-4">Recent Activity</h3>
           {vaults.length > 0 ? (
             <div className="space-y-3">
-              {vaults.slice(0, 3).map((vault, i) => (
-                <div key={vault.id} className="flex items-center gap-4 py-3 border-b border-zinc-800/50 last:border-0">
+              {vaults.slice(0, 3).map((vault) => (
+                <div key={vault.id || vault.vault_id} className="flex items-center gap-4 py-3 border-b border-zinc-800/50 last:border-0">
                   <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center">
                     <Shield size={16} className="text-green-400" />
                   </div>
@@ -485,46 +999,41 @@ const SatsLegacy = () => {
     );
   };
 
-  // Vaults View - Vault grid with management
-  const VaultsView = () => {
-    return (
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-white">Your Vaults</h2>
-            <p className="text-zinc-500">Manage your inheritance vaults</p>
-          </div>
-          <button
-            onClick={() => setShowCreateWizard(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-black font-semibold rounded-lg hover:opacity-90 transition-opacity"
-          >
-            <Plus size={18} />
-            New Vault
-          </button>
+  // Vaults View
+  const VaultsView = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-white">Your Vaults</h2>
+          <p className="text-zinc-500">Manage your inheritance vaults</p>
         </div>
+        <button
+          onClick={() => setShowCreateWizard(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-black font-semibold rounded-lg hover:opacity-90 transition-opacity"
+        >
+          <Plus size={18} />
+          New Vault
+        </button>
+      </div>
 
-        {/* Vaults Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {vaults.map(vault => (
-            <VaultCard key={vault.id} vault={vault} showDelete={true} />
-          ))}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {vaults.map(vault => (
+          <VaultCard key={vault.id || vault.vault_id} vault={vault} showDelete={true} />
+        ))}
 
-          {/* Empty State / Add New */}
-          <div
-            onClick={() => setShowCreateWizard(true)}
-            className="bg-zinc-900/30 border-2 border-dashed border-zinc-800 rounded-2xl p-6 cursor-pointer hover:border-orange-500/50 transition-all duration-300 flex flex-col items-center justify-center min-h-[250px] group"
-          >
-            <div className="w-16 h-16 rounded-full bg-zinc-800/50 flex items-center justify-center mb-4 group-hover:bg-orange-500/10 transition-colors">
-              <Plus size={32} className="text-zinc-600 group-hover:text-orange-400 transition-colors" />
-            </div>
-            <p className="text-zinc-500 group-hover:text-zinc-300 transition-colors">Create New Vault</p>
-            <p className="text-xs text-zinc-600 mt-1">Set up your inheritance plan</p>
+        <div
+          onClick={() => setShowCreateWizard(true)}
+          className="bg-zinc-900/30 border-2 border-dashed border-zinc-800 rounded-2xl p-6 cursor-pointer hover:border-orange-500/50 transition-all duration-300 flex flex-col items-center justify-center min-h-[250px] group"
+        >
+          <div className="w-16 h-16 rounded-full bg-zinc-800/50 flex items-center justify-center mb-4 group-hover:bg-orange-500/10 transition-colors">
+            <Plus size={32} className="text-zinc-600 group-hover:text-orange-400 transition-colors" />
           </div>
+          <p className="text-zinc-500 group-hover:text-zinc-300 transition-colors">Create New Vault</p>
+          <p className="text-xs text-zinc-600 mt-1">Set up your inheritance plan</p>
         </div>
       </div>
-    );
-  };
+    </div>
+  );
 
   // Vault Detail View
   const VaultDetailView = ({ vault }) => {
@@ -533,7 +1042,6 @@ const SatsLegacy = () => {
 
     return (
       <div className="space-y-6">
-        {/* Back Button */}
         <button
           onClick={() => setSelectedVault(null)}
           className="flex items-center gap-2 text-zinc-500 hover:text-white transition-colors"
@@ -542,7 +1050,6 @@ const SatsLegacy = () => {
           Back to Vaults
         </button>
 
-        {/* Vault Header */}
         <div className="bg-zinc-900/60 backdrop-blur border border-zinc-800 rounded-2xl p-6">
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center gap-4">
@@ -552,29 +1059,23 @@ const SatsLegacy = () => {
               <div>
                 <h2 className="text-2xl font-bold text-white">{vault.name}</h2>
                 <p className="text-zinc-500 capitalize">{vault.logic?.primary || vault.scriptType} Script • {vault.status}</p>
-                {vault.description && (
-                  <p className="text-sm text-zinc-400 mt-1">{vault.description}</p>
-                )}
+                {vault.description && <p className="text-sm text-zinc-400 mt-1">{vault.description}</p>}
               </div>
             </div>
             <div className="flex gap-2">
               <button className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors">
                 <Edit3 size={18} className="text-zinc-400" />
               </button>
-              <button 
-                onClick={() => setShowDeleteModal(vault)}
-                className="p-2 rounded-lg bg-zinc-800 hover:bg-red-500/20 transition-colors"
-              >
+              <button onClick={() => setShowDeleteModal(vault)} className="p-2 rounded-lg bg-zinc-800 hover:bg-red-500/20 transition-colors">
                 <Trash2 size={18} className="text-zinc-400 hover:text-red-400" />
               </button>
             </div>
           </div>
 
-          {/* Balance */}
           <div className="grid grid-cols-2 gap-6 p-4 bg-zinc-800/50 rounded-xl">
             <div>
               <p className="text-zinc-500 text-sm mb-1">Balance</p>
-              <p className="text-3xl font-bold text-white">{vault.balance} BTC</p>
+              <p className="text-3xl font-bold text-white">{vault.balance.toFixed(8)} BTC</p>
               <p className="text-zinc-500">${vault.balanceUSD.toLocaleString()}</p>
             </div>
             <div>
@@ -585,7 +1086,6 @@ const SatsLegacy = () => {
           </div>
         </div>
 
-        {/* Infrastructure & Logic Config */}
         {vault.infrastructure && (
           <div className="bg-zinc-900/60 backdrop-blur border border-zinc-800 rounded-2xl p-6">
             <h3 className="text-lg font-semibold text-white mb-4">Sovereign Configuration</h3>
@@ -613,71 +1113,30 @@ const SatsLegacy = () => {
                 </div>
               </div>
             </div>
-            {vault.modifiers && Object.values(vault.modifiers).some(v => v) && (
-              <div className="mt-4 pt-4 border-t border-zinc-800">
-                <p className="text-sm text-zinc-500 mb-2">Modifiers</p>
-                <div className="flex flex-wrap gap-2">
-                  {vault.modifiers.staggered && (
-                    <span className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-lg text-sm">Staggered Release</span>
-                  )}
-                  {vault.modifiers.multiBeneficiary && (
-                    <span className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm">Multi-Beneficiary</span>
-                  )}
-                  {vault.modifiers.decoy && (
-                    <span className="px-3 py-1 bg-red-500/20 text-red-400 rounded-lg text-sm">Decoy Vault</span>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
         )}
 
-        {/* Address */}
         <div className="bg-zinc-900/60 backdrop-blur border border-zinc-800 rounded-2xl p-6">
           <h3 className="text-lg font-semibold text-white mb-4">Vault Address</h3>
           <div className="flex items-center gap-3 p-4 bg-zinc-800/50 rounded-xl">
-            <code className="flex-1 text-sm text-zinc-300 font-mono break-all">{vault.address}</code>
-            <button
-              onClick={() => copyToClipboard(vault.address)}
-              className="p-2 rounded-lg bg-zinc-700 hover:bg-zinc-600 transition-colors"
-            >
-              {copiedAddress ? <Check size={18} className="text-green-400" /> : <Copy size={18} className="text-zinc-400" />}
-            </button>
-            <button className="p-2 rounded-lg bg-zinc-700 hover:bg-zinc-600 transition-colors">
-              <QrCode size={18} className="text-zinc-400" />
-            </button>
+            <code className="flex-1 text-sm text-zinc-300 font-mono break-all">{vault.address || 'Address will be generated'}</code>
+            {vault.address && (
+              <>
+                <button onClick={() => copyToClipboard(vault.address)} className="p-2 rounded-lg bg-zinc-700 hover:bg-zinc-600 transition-colors">
+                  {copiedAddress ? <Check size={18} className="text-green-400" /> : <Copy size={18} className="text-zinc-400" />}
+                </button>
+                <button className="p-2 rounded-lg bg-zinc-700 hover:bg-zinc-600 transition-colors">
+                  <QrCode size={18} className="text-zinc-400" />
+                </button>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Script Details */}
-        <div className="bg-zinc-900/60 backdrop-blur border border-zinc-800 rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-white">Trust Script</h3>
-            <button
-              onClick={() => setShowPrivateData(!showPrivateData)}
-              className="flex items-center gap-2 text-sm text-zinc-500 hover:text-white transition-colors"
-            >
-              {showPrivateData ? <EyeOff size={16} /> : <Eye size={16} />}
-              {showPrivateData ? 'Hide' : 'Show'} Details
-            </button>
-          </div>
-          <div className="p-4 bg-zinc-950 rounded-xl font-mono text-sm">
-            <code className="text-green-400">
-              {showPrivateData
-                ? `or(\n  pk(owner_key),\n  and(\n    thresh(1,\n      pk(heir1_${vault.beneficiaries[0]?.name.split(' ')[0].toLowerCase() || 'unknown'}),\n      pk(heir2_${vault.beneficiaries[1]?.name.split(' ')[0].toLowerCase() || 'unknown'})\n    ),\n    after(${Math.floor(new Date(vault.lockDate).getTime() / 1000)})\n  )\n)`
-                : 'or(pk(...), and(thresh(...), after(...)))'}
-            </code>
-          </div>
-          <p className="text-xs text-zinc-600 mt-3">
-            This Miniscript allows you to spend at any time, or beneficiaries can spend after the timelock expires.
-          </p>
-        </div>
-
-        {/* Beneficiaries */}
         <div className="bg-zinc-900/60 backdrop-blur border border-zinc-800 rounded-2xl p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-white">Beneficiaries</h3>
-            <button className="flex items-center gap-2 text-sm text-orange-400 hover:text-orange-300 transition-colors">
+            <button onClick={() => setShowAddBeneficiary(true)} className="flex items-center gap-2 text-sm text-orange-400 hover:text-orange-300 transition-colors">
               <UserPlus size={16} />
               Add
             </button>
@@ -694,7 +1153,7 @@ const SatsLegacy = () => {
                 </div>
                 <div className="text-right">
                   <p className="text-lg font-bold text-orange-400">{beneficiary.percentage}%</p>
-                  <p className="text-xs text-zinc-500">{(vault.balance * beneficiary.percentage / 100).toFixed(4)} BTC</p>
+                  <p className="text-xs text-zinc-500">{(vault.balance * beneficiary.percentage / 100).toFixed(8)} BTC</p>
                 </div>
               </div>
             )) : (
@@ -707,13 +1166,12 @@ const SatsLegacy = () => {
           </div>
         </div>
 
-        {/* Actions */}
         <div className="grid grid-cols-3 gap-4">
           <button className="flex items-center justify-center gap-2 p-4 bg-zinc-800 rounded-xl text-zinc-300 hover:bg-zinc-700 transition-colors">
             <Download size={18} />
             Export PSBT
           </button>
-          <button 
+          <button
             onClick={() => setShowHeirKitGenerator(true)}
             className="flex items-center justify-center gap-2 p-4 bg-orange-500 rounded-xl text-black font-medium hover:bg-orange-600 transition-colors"
           >
@@ -729,7 +1187,7 @@ const SatsLegacy = () => {
     );
   };
 
-  // Legacy Simulator View
+  // Simulator View
   const SimulatorView = () => {
     const [projections, setProjections] = useState(null);
 
@@ -747,9 +1205,6 @@ const SatsLegacy = () => {
             btc: value,
             usd: value * btcPrice * Math.pow(1 + growthRates[scenario], year)
           });
-          if (year < simulatorData.years) {
-            value = value;
-          }
         }
 
         return {
@@ -769,7 +1224,6 @@ const SatsLegacy = () => {
           <p className="text-zinc-500">Project your Bitcoin inheritance across generations</p>
         </div>
 
-        {/* Input Controls */}
         <div className="bg-zinc-900/60 backdrop-blur border border-zinc-800 rounded-2xl p-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <div>
@@ -817,7 +1271,6 @@ const SatsLegacy = () => {
           </button>
         </div>
 
-        {/* Results */}
         {projections && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {projections.map(proj => (
@@ -836,7 +1289,7 @@ const SatsLegacy = () => {
     );
   };
 
-  // Legal Documents View
+  // Legal View
   const LegalView = () => {
     const [selectedState, setSelectedState] = useState('Texas');
     const states = ['Texas', 'California', 'New York', 'Florida', 'Wyoming', 'Other'];
@@ -848,7 +1301,6 @@ const SatsLegacy = () => {
           <p className="text-zinc-500">Generate state-compliant inheritance documents</p>
         </div>
 
-        {/* State Selection */}
         <div className="bg-zinc-900/60 backdrop-blur border border-zinc-800 rounded-2xl p-6">
           <h3 className="text-lg font-semibold text-white mb-4">Select Your State</h3>
           <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
@@ -868,7 +1320,6 @@ const SatsLegacy = () => {
           </div>
         </div>
 
-        {/* Document Types */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[
             { title: 'Bitcoin-Specific Will Addendum', desc: 'Legal addendum recognizing your Bitcoin inheritance plan', icon: FileText },
@@ -890,7 +1341,6 @@ const SatsLegacy = () => {
           ))}
         </div>
 
-        {/* Generate Button */}
         <button className="w-full py-4 bg-gradient-to-r from-orange-500 to-orange-600 text-black font-semibold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
           <FileText size={20} />
           Generate All Documents for {selectedState}
@@ -964,16 +1414,12 @@ const SatsLegacy = () => {
       <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-lg">
         <div className="flex items-center justify-between p-6 border-b border-zinc-800">
           <h2 className="text-xl font-bold text-white">Settings</h2>
-          <button
-            onClick={() => setShowSettings(false)}
-            className="p-2 rounded-lg hover:bg-zinc-800 transition-colors"
-          >
+          <button onClick={() => setShowSettings(false)} className="p-2 rounded-lg hover:bg-zinc-800 transition-colors">
             <X size={20} className="text-zinc-500" />
           </button>
         </div>
 
         <div className="p-6 space-y-6">
-          {/* Tor Toggle */}
           <div className="flex items-center justify-between">
             <div>
               <p className="text-white font-medium">🧅 Tor Network</p>
@@ -981,17 +1427,12 @@ const SatsLegacy = () => {
             </div>
             <button
               onClick={() => setSettings(prev => ({ ...prev, torEnabled: !prev.torEnabled }))}
-              className={`w-12 h-6 rounded-full transition-colors ${
-                settings.torEnabled ? 'bg-purple-500' : 'bg-zinc-700'
-              }`}
+              className={`w-12 h-6 rounded-full transition-colors ${settings.torEnabled ? 'bg-purple-500' : 'bg-zinc-700'}`}
             >
-              <div className={`w-5 h-5 rounded-full bg-white transform transition-transform ${
-                settings.torEnabled ? 'translate-x-6' : 'translate-x-0.5'
-              }`} />
+              <div className={`w-5 h-5 rounded-full bg-white transform transition-transform ${settings.torEnabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
             </button>
           </div>
 
-          {/* Network */}
           <div>
             <p className="text-white font-medium mb-2">Network</p>
             <div className="grid grid-cols-3 gap-2">
@@ -1011,7 +1452,6 @@ const SatsLegacy = () => {
             </div>
           </div>
 
-          {/* Electrum Server */}
           <div>
             <p className="text-white font-medium mb-2">Electrum Server</p>
             <input
@@ -1022,11 +1462,46 @@ const SatsLegacy = () => {
             />
             <p className="text-xs text-zinc-600 mt-2">Use your own node for maximum sovereignty</p>
           </div>
+
+          {/* License Section */}
+          <div className="pt-4 border-t border-zinc-800">
+            <p className="text-white font-medium mb-2">License</p>
+            <div className="p-4 bg-zinc-800/50 rounded-xl">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-zinc-400">Status</span>
+                <span className={`font-medium ${licenseInfo.licensed ? 'text-green-400' : 'text-zinc-400'}`}>
+                  {licenseInfo.licensed ? `${licenseInfo.tier.charAt(0).toUpperCase() + licenseInfo.tier.slice(1)} License` : 'Free Tier'}
+                </span>
+              </div>
+              {licenseInfo.email && (
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-zinc-400">Email</span>
+                  <span className="text-zinc-300">{licenseInfo.email}</span>
+                </div>
+              )}
+              {!licenseInfo.licensed && (
+                <div className="mt-3 space-y-2">
+                  <button
+                    onClick={() => electronAPI?.license.purchase('standard')}
+                    className="w-full py-2 bg-orange-500 text-black font-medium rounded-lg hover:bg-orange-600 transition-colors"
+                  >
+                    Upgrade to Standard - $99
+                  </button>
+                  <button
+                    onClick={() => electronAPI?.license.purchase('pro')}
+                    className="w-full py-2 bg-gradient-to-r from-purple-500 to-orange-500 text-white font-medium rounded-lg hover:opacity-90 transition-opacity"
+                  >
+                    Upgrade to Pro - $299
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="p-6 border-t border-zinc-800">
           <button
-            onClick={() => setShowSettings(false)}
+            onClick={() => { handleSaveSettings(settings); setShowSettings(false); }}
             className="w-full py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-black font-semibold rounded-xl hover:opacity-90 transition-opacity"
           >
             Save Settings
@@ -1036,10 +1511,21 @@ const SatsLegacy = () => {
     </div>
   );
 
+  // Loading screen
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <div className="text-center">
+          <Loader size={48} className="text-orange-500 animate-spin mx-auto mb-4" />
+          <p className="text-zinc-400">Loading SatsLegacy...</p>
+        </div>
+      </div>
+    );
+  }
+
   // Main App
   return (
     <div className="min-h-screen bg-zinc-950 text-white flex">
-      {/* Background Pattern */}
       <div className="fixed inset-0 opacity-30 pointer-events-none">
         <div className="absolute inset-0" style={{
           backgroundImage: `radial-gradient(circle at 50% 50%, rgba(247, 147, 26, 0.03) 0%, transparent 50%)`,
@@ -1069,7 +1555,6 @@ const SatsLegacy = () => {
         </div>
       </main>
 
-      {/* Modals */}
       {showCreateWizard && (
         <VaultCreationWizard
           onComplete={handleCreateVault}
@@ -1080,6 +1565,16 @@ const SatsLegacy = () => {
       {showSettings && <SettingsModal />}
 
       {showDeleteModal && <DeleteVaultModal vault={showDeleteModal} />}
+
+      {showAddBeneficiary && selectedVault && <AddBeneficiaryModal />}
+
+      {showPasswordModal && (
+        <PasswordModal
+          mode={showPasswordModal}
+          onSubmit={handleSaveVaultWithPassword}
+          onCancel={() => { setShowPasswordModal(null); setPendingVaultData(null); }}
+        />
+      )}
 
       {showHeirKitGenerator && selectedVault && (
         <HeirKitGenerator
@@ -1093,4 +1588,7 @@ const SatsLegacy = () => {
 };
 
 export default SatsLegacy;
+
+
+
 

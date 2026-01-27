@@ -229,3 +229,31 @@ export function estimateDateFromBlock(blockHeight: number, currentHeight: number
   date.setMinutes(date.getMinutes() + minutesDiff);
   return date;
 }
+
+// ============================================
+// BITCOIN ADDRESS UTILITIES
+// ============================================
+
+export {
+  generateP2WPKHAddress,
+  generateP2WSHAddress,
+  generateMultisigAddress,
+  generateTimelockAddress,
+  generateVaultAddress,
+  validateAddress,
+  getAddressType,
+} from './scripts/bitcoin-address';
+
+// ============================================
+// BITCOIN ADDRESS UTILITIES
+// ============================================
+
+export {
+  generateP2WPKHAddress,
+  generateP2WSHAddress,
+  generateMultisigAddress,
+  generateTimelockAddress,
+  generateVaultAddress,
+  validateAddress,
+  getAddressType,
+} from './scripts/bitcoin-address';
