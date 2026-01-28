@@ -4,8 +4,10 @@ import { Lock, Unlock, Shield, Clock, Users, FileText, Key, Wallet, ChevronRight
 // Import the new Vault Creation Wizard
 import { VaultCreationWizard } from './src/vault/creation/wizard/VaultCreationWizard';
 
-// Import the Heir Kit Generator
 import HeirKitGenerator from './src/components/HeirKitGenerator';
+
+// Import Bitcoin address utilities
+import { generateTimelockAddress, validateAddress } from './src/vault/scripts/bitcoin-address';
 
 // ============================================
 // SatsLegacy - SOVEREIGN BITCOIN INHERITANCE
@@ -99,8 +101,9 @@ const SatsLegacy = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showHeirKitGenerator, setShowHeirKitGenerator] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(null);
-  const [showAddBeneficiary, setShowAddBeneficiary] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showOwnerKeyModal, setShowOwnerKeyModal] = useState(false);
+  const [showAddBeneficiary, setShowAddBeneficiary] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(null);
   const [pendingVaultData, setPendingVaultData] = useState(null); // Temp storage for vault being created
   const [settings, setSettings] = useState({
@@ -292,7 +295,9 @@ const SatsLegacy = () => {
       lockDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
       beneficiaries: [],
       status: 'active',
-      address: '', // Will be generated from script
+      status: 'pending', // pending until owner key added
+      ownerPubkey: '', // Owner's xpub from hardware wallet
+      address: '', // Will be generated when keys are configured
       lastActivity: new Date(),
       inactivityTrigger: 365,
       infrastructure: config.infrastructure,
@@ -409,6 +414,23 @@ const SatsLegacy = () => {
       (v.id === selectedVault.id || v.vault_id === selectedVault.vault_id) ? updatedVault : v
     ));
     setSelectedVault(updatedVault);
+  };
+
+  // Add owner public key to vault
+  const handleSetOwnerKey = (ownerPubkey) => {
+    if (!selectedVault) return;
+    
+    const updatedVault = {
+      ...selectedVault,
+      ownerPubkey,
+      status: 'active'
+    };
+    
+    setVaults(prev => prev.map(v =>
+      (v.id === selectedVault.id || v.vault_id === selectedVault.vault_id) ? updatedVault : v
+    ));
+    setSelectedVault(updatedVault);
+    setShowOwnerKeyModal(false);
   };
 
   // Generate Legal Documents
@@ -1062,6 +1084,74 @@ Declarant Signature`
     );
   };
 
+  // Owner Key Modal
+  const OwnerKeyModal = () => {
+    const [pubkey, setPubkey] = useState('');
+    const [error, setError] = useState('');
+
+    const handleSubmit = () => {
+      if (!pubkey.trim() || pubkey.length < 20) {
+        setError('Please enter a valid public key or xpub');
+        return;
+      }
+      handleSetOwnerKey(pubkey.trim());
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md">
+          <div className="flex items-center justify-between p-6 border-b border-zinc-800">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                <Key size={20} className="text-orange-400" />
+              </div>
+              <h2 className="text-xl font-bold text-white">Add Owner Key</h2>
+            </div>
+            <button onClick={() => setShowOwnerKeyModal(false)} className="p-2 rounded-lg hover:bg-zinc-800 transition-colors">
+              <X size={20} className="text-zinc-500" />
+            </button>
+          </div>
+
+          <div className="p-6 space-y-4">
+            <p className="text-zinc-400 text-sm">
+              Enter your public key (xpub) from your hardware wallet. This allows the vault to generate a receiving address.
+            </p>
+
+            <div className="bg-zinc-800/50 rounded-lg p-4 text-sm">
+              <p className="text-orange-400 font-medium mb-2">How to get your xpub:</p>
+              <ul className="text-zinc-400 space-y-1">
+                <li>• Coldcard: Settings ? Multisig Wallets ? Export XPUB</li>
+                <li>• Trezor: Use Trezor Suite ? Account ? Show xpub</li>
+                <li>• Ledger: Use Ledger Live ? Account ? Advanced</li>
+              </ul>
+            </div>
+
+            <div>
+              <label className="block text-sm text-zinc-400 mb-2">Public Key / xpub</label>
+              <input
+                type="text"
+                value={pubkey}
+                onChange={(e) => { setPubkey(e.target.value); setError(''); }}
+                placeholder="xpub6..."
+                className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white font-mono text-sm focus:outline-none focus:border-orange-500"
+              />
+            </div>
+
+            {error && <p className="text-red-400 text-sm">{error}</p>}
+
+            <button
+              onClick={handleSubmit}
+              className="w-full py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-black font-semibold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+            >
+              <Key size={18} />
+              Save Owner Key
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
 
 
   // Delete Vault Modal
@@ -1409,21 +1499,60 @@ Declarant Signature`
           </div>
         )}
 
+        {/* Owner Key Section */}
         <div className="bg-zinc-900/60 backdrop-blur border border-zinc-800 rounded-2xl p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">Vault Address</h3>
-          <div className="flex items-center gap-3 p-4 bg-zinc-800/50 rounded-xl">
-            <code className="flex-1 text-sm text-zinc-300 font-mono break-all">{vault.address || 'Address will be generated'}</code>
-            {vault.address && (
-              <>
-                <button onClick={() => copyToClipboard(vault.address)} className="p-2 rounded-lg bg-zinc-700 hover:bg-zinc-600 transition-colors">
-                  {copiedAddress ? <Check size={18} className="text-green-400" /> : <Copy size={18} className="text-zinc-400" />}
-                </button>
-                <button className="p-2 rounded-lg bg-zinc-700 hover:bg-zinc-600 transition-colors">
-                  <QrCode size={18} className="text-zinc-400" />
-                </button>
-              </>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white">Owner Key</h3>
+            {!vault.ownerPubkey && (
+              <button onClick={() => setShowOwnerKeyModal(true)} className="flex items-center gap-2 text-sm text-orange-400 hover:text-orange-300 transition-colors">
+                <Key size={16} />
+                Add Key
+              </button>
             )}
           </div>
+          {vault.ownerPubkey ? (
+            <div className="flex items-center gap-3 p-4 bg-zinc-800/50 rounded-xl">
+              <Key size={20} className="text-green-400" />
+              <code className="flex-1 text-sm text-zinc-300 font-mono truncate">{vault.ownerPubkey}</code>
+              <Check size={18} className="text-green-400" />
+            </div>
+          ) : (
+            <div className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-xl">
+              <div className="flex items-center gap-3">
+                <AlertTriangle size={20} className="text-orange-400" />
+                <div>
+                  <p className="text-orange-400 font-medium">Owner key required</p>
+                  <p className="text-sm text-zinc-400">Add your hardware wallet xpub to generate a receiving address</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Vault Address Section */}
+        <div className="bg-zinc-900/60 backdrop-blur border border-zinc-800 rounded-2xl p-6">
+          <h3 className="text-lg font-semibold text-white mb-4">Vault Address</h3>
+          {vault.address ? (
+            <div className="flex items-center gap-3 p-4 bg-zinc-800/50 rounded-xl">
+              <code className="flex-1 text-sm text-zinc-300 font-mono break-all">{vault.address}</code>
+              <button onClick={() => copyToClipboard(vault.address)} className="p-2 rounded-lg bg-zinc-700 hover:bg-zinc-600 transition-colors">
+                {copiedAddress ? <Check size={18} className="text-green-400" /> : <Copy size={18} className="text-zinc-400" />}
+              </button>
+              <button className="p-2 rounded-lg bg-zinc-700 hover:bg-zinc-600 transition-colors">
+                <QrCode size={18} className="text-zinc-400" />
+              </button>
+            </div>
+          ) : (
+            <div className="p-4 bg-zinc-800/50 rounded-xl">
+              <p className="text-zinc-500 text-sm">
+                {!vault.ownerPubkey && !vault.beneficiaries?.some(b => b.pubkey) 
+                  ? 'Add owner key and at least one beneficiary with a public key to generate address'
+                  : !vault.ownerPubkey 
+                    ? 'Add owner key to generate address'
+                    : 'Add at least one beneficiary with a public key to generate address'}
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="bg-zinc-900/60 backdrop-blur border border-zinc-800 rounded-2xl p-6">
@@ -1868,6 +1997,8 @@ Declarant Signature`
       {showAddBeneficiary && selectedVault && <AddBeneficiaryModal />}
 
       {showExportModal && selectedVault && <ExportModal />}
+
+      {showOwnerKeyModal && selectedVault && <OwnerKeyModal />}
 
       {showPasswordModal && (
         <PasswordModal
