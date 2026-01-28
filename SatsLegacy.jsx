@@ -100,7 +100,8 @@ const SatsLegacy = () => {
   const [showHeirKitGenerator, setShowHeirKitGenerator] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(null);
   const [showAddBeneficiary, setShowAddBeneficiary] = useState(false);
-  const [showPasswordModal, setShowPasswordModal] = useState(null); // For vault creation password
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(null);
   const [pendingVaultData, setPendingVaultData] = useState(null); // Temp storage for vault being created
   const [settings, setSettings] = useState({
     torEnabled: false,
@@ -408,6 +409,230 @@ const SatsLegacy = () => {
       (v.id === selectedVault.id || v.vault_id === selectedVault.vault_id) ? updatedVault : v
     ));
     setSelectedVault(updatedVault);
+  };
+
+  // Generate Legal Documents
+  const generateLegalDocs = (state) => {
+    const docs = [
+      {
+        title: 'Bitcoin-Specific Will Addendum',
+        content: `
+BITCOIN ASSET ADDENDUM TO LAST WILL AND TESTAMENT
+
+State of ${state}
+
+I, _________________________ (the "Testator"), being of sound mind, hereby declare this Addendum to my Last Will and Testament regarding my Bitcoin and cryptocurrency holdings.
+
+ARTICLE I - DIGITAL ASSET DECLARATION
+I own Bitcoin stored in self-custody using the SatsLegacy inheritance system. These assets are secured using cryptographic time-locks and are NOT held by any third party.
+
+ARTICLE II - INHERITANCE MECHANISM
+My Bitcoin inheritance is managed through SatsLegacy vaults with the following characteristics:
+- Time-locked scripts that automatically enable heir access after specified dates
+- No custodian or third party holds my private keys
+- My heirs have received "Heir Kits" containing necessary recovery information
+
+ARTICLE III - HEIR INSTRUCTIONS
+My designated heirs should:
+1. Locate their personal Heir Kit (provided separately)
+2. Wait until the timelock date specified in their kit
+3. Follow the recovery instructions using Sparrow Wallet
+4. Contact _________________________ if technical assistance is needed
+
+ARTICLE IV - GOVERNING LAW
+This Addendum shall be governed by the laws of the State of ${state}.
+
+Executed this _____ day of ____________, 20___.
+
+
+_________________________________
+Testator Signature
+
+
+_________________________________
+Witness 1 Signature
+
+
+_________________________________
+Witness 2 Signature
+        `
+      }
+    ];
+
+    // Create and download the document
+    const blob = new Blob([docs[0].content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `SatsLegacy_Will_Addendum_${state}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+  };
+
+  // Legal document templates for individual generation
+  const legalDocTemplates = {
+    'Bitcoin-Specific Will Addendum': (state) => `BITCOIN ASSET ADDENDUM TO LAST WILL AND TESTAMENT
+
+State of ${state}
+
+I, _________________________ (the "Testator"), being of sound mind, hereby declare this Addendum to my Last Will and Testament regarding my Bitcoin and cryptocurrency holdings.
+
+ARTICLE I - DIGITAL ASSET DECLARATION
+I own Bitcoin stored in self-custody using the SatsLegacy inheritance system. These assets are secured using cryptographic time-locks and are NOT held by any third party.
+
+ARTICLE II - INHERITANCE MECHANISM
+My Bitcoin inheritance is managed through SatsLegacy vaults with the following characteristics:
+- Time-locked scripts that automatically enable heir access after specified dates
+- No custodian or third party holds my private keys
+- My heirs have received "Heir Kits" containing necessary recovery information
+
+ARTICLE III - HEIR INSTRUCTIONS
+My designated heirs should:
+1. Locate their personal Heir Kit (provided separately)
+2. Wait until the timelock date specified in their kit
+3. Follow the recovery instructions using Sparrow Wallet
+4. Contact _________________________ if technical assistance is needed
+
+ARTICLE IV - GOVERNING LAW
+This Addendum shall be governed by the laws of the State of ${state}.
+
+Executed this _____ day of ____________, 20___.
+
+_________________________________
+Testator Signature
+
+_________________________________
+Witness 1 Signature
+
+_________________________________
+Witness 2 Signature`,
+
+    'Letter of Instruction': (state) => `LETTER OF INSTRUCTION FOR BITCOIN INHERITANCE
+
+To My Heirs and Executor,
+
+This letter provides detailed instructions for accessing Bitcoin held in my SatsLegacy inheritance vault(s).
+
+WHAT YOU NEED
+1. Your personal Heir Kit (envelope/USB provided to you)
+2. A computer with Sparrow Wallet installed
+3. Your hardware wallet (if one was provided)
+
+STEP-BY-STEP INSTRUCTIONS
+1. Verify the timelock has expired (check the date in your Heir Kit)
+2. Download Sparrow Wallet from sparrowwallet.com
+3. Import the vault file from your Heir Kit
+4. Connect your hardware wallet if required
+5. Create a transaction to your personal wallet
+6. Sign and broadcast the transaction
+
+SECURITY REMINDERS
+- Never share your seed phrase or hardware wallet PIN
+- Verify all addresses on your hardware wallet screen
+- Take your time - the Bitcoin will wait for you
+
+With love,
+_________________________
+
+Date: _____________`,
+
+    'Memorandum of Understanding': (state) => `MEMORANDUM OF UNDERSTANDING - BITCOIN INHERITANCE
+
+State of ${state}
+
+PARTIES
+Vault Owner: _________________________
+Heir 1: _________________________ (___% allocation)
+Heir 2: _________________________ (___% allocation)
+
+AGREEMENT
+1. The vault uses a timelock mechanism that becomes spendable on: _____________
+2. Each heir agrees to their stated percentage allocation.
+3. All parties agree to cooperate in the technical process of claiming funds.
+
+SIGNATURES
+Vault Owner: _________________________ Date: _________
+Heir 1: _________________________ Date: _________
+Heir 2: _________________________ Date: _________`,
+
+    'Digital Asset Declaration': (state) => `DECLARATION OF DIGITAL ASSET HOLDINGS
+
+State of ${state}
+
+I, _________________________, declare under penalty of perjury:
+
+1. I own Bitcoin stored in self-custody via SatsLegacy vault
+2. Approximate Value: $_____________ USD
+3. Vault ID(s): _________________________
+4. These assets are NOT held by any exchange, bank, or custodian
+
+Designated heirs with Heir Kits:
+- _________________________
+- _________________________
+
+DECLARED this _____ day of ____________, 20___.
+
+_________________________________
+Declarant Signature`
+  };
+
+  // Generate single legal document
+  const generateSingleDoc = (docTitle, state) => {
+    const template = legalDocTemplates[docTitle];
+    if (!template) {
+      alert('Document template not found');
+      return;
+    }
+    const content = template(state);
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `SatsLegacy_${docTitle.replace(/\s+/g, '_')}_${state}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // Export vault to file
+  const handleExportVault = async (password) => {
+    if (!selectedVault || !isElectron || !electronAPI) return;
+    try {
+      const result = await electronAPI.vault.export(selectedVault.vault_id || selectedVault.id, password);
+      if (result.success) {
+        alert('Vault exported successfully');
+      } else {
+        alert('Export failed: ' + result.error);
+      }
+    } catch (e) {
+      alert('Export failed: ' + e.message);
+    }
+    setShowExportModal(false);
+  };
+
+  // Import vault from file
+  const handleImportVault = async () => {
+    if (!isElectron || !electronAPI) return;
+    try {
+      const result = await electronAPI.vault.import();
+      if (result.success && result.encrypted) {
+        alert('Vault imported. You will need to enter the password to access it.');
+        // Reload vault list
+        const listResult = await electronAPI.vault.list();
+        if (listResult.success) {
+          // Refresh vaults
+          window.location.reload();
+        }
+      } else if (result.error) {
+        alert('Import failed: ' + result.error);
+      }
+    } catch (e) {
+      alert('Import failed: ' + e.message);
+    }
   };
 
 
@@ -778,6 +1003,66 @@ const SatsLegacy = () => {
     );
   };
 
+  // Export Vault Modal
+  const ExportModal = () => {
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+
+    const handleExport = async () => {
+      if (password.length < 8) {
+        setError('Password must be at least 8 characters');
+        return;
+      }
+      await handleExportVault(password);
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md">
+          <div className="flex items-center justify-between p-6 border-b border-zinc-800">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                <Download size={20} className="text-orange-400" />
+              </div>
+              <h2 className="text-xl font-bold text-white">Export Vault</h2>
+            </div>
+            <button onClick={() => setShowExportModal(false)} className="p-2 rounded-lg hover:bg-zinc-800 transition-colors">
+              <X size={20} className="text-zinc-500" />
+            </button>
+          </div>
+
+          <div className="p-6 space-y-4">
+            <p className="text-zinc-400 text-sm">
+              Enter your vault password to export an encrypted backup file. This file can be imported on another device.
+            </p>
+
+            <div>
+              <label className="block text-sm text-zinc-400 mb-2">Vault Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                placeholder="Enter your vault password"
+                className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white focus:outline-none focus:border-orange-500"
+              />
+            </div>
+
+            {error && <p className="text-red-400 text-sm">{error}</p>}
+
+            <button
+              onClick={handleExport}
+              className="w-full py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-black font-semibold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+            >
+              <Download size={18} />
+              Export Encrypted Backup
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+
 
   // Delete Vault Modal
   const DeleteVaultModal = ({ vault }) => {
@@ -1013,6 +1298,14 @@ const SatsLegacy = () => {
         >
           <Plus size={18} />
           New Vault
+          New Vault
+        </button>
+        <button
+          onClick={handleImportVault}
+          className="flex items-center gap-2 px-4 py-2 bg-zinc-800 text-zinc-300 font-medium rounded-lg hover:bg-zinc-700 transition-colors"
+        >
+          <Download size={18} />
+          Import Vault
         </button>
       </div>
 
@@ -1166,10 +1459,14 @@ const SatsLegacy = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
-          <button className="flex items-center justify-center gap-2 p-4 bg-zinc-800 rounded-xl text-zinc-300 hover:bg-zinc-700 transition-colors">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <button onClick={() => alert("PSBT export requires vault address and keys to be configured. This feature will generate a transaction template for Sparrow Wallet.")} className="flex items-center justify-center gap-2 p-4 bg-zinc-800 rounded-xl text-zinc-300 hover:bg-zinc-700 transition-colors">
             <Download size={18} />
             Export PSBT
+          </button>
+          <button onClick={() => setShowExportModal(true)} className="flex items-center justify-center gap-2 p-4 bg-zinc-800 rounded-xl text-zinc-300 hover:bg-zinc-700 transition-colors">
+            <Download size={18} />
+            Export Vault
           </button>
           <button
             onClick={() => setShowHeirKitGenerator(true)}
@@ -1178,7 +1475,7 @@ const SatsLegacy = () => {
             <Package size={18} />
             Generate Heir Kit
           </button>
-          <button className="flex items-center justify-center gap-2 p-4 bg-zinc-800 rounded-xl text-zinc-300 hover:bg-zinc-700 transition-colors">
+          <button onClick={() => { setCurrentView("legal"); setSelectedVault(null); }} className="flex items-center justify-center gap-2 p-4 bg-zinc-800 rounded-xl text-zinc-300 hover:bg-zinc-700 transition-colors">
             <FileText size={18} />
             Generate Legal Docs
           </button>
@@ -1327,7 +1624,7 @@ const SatsLegacy = () => {
             { title: 'Memorandum of Understanding', desc: 'Multi-heir agreement on vault terms', icon: Users },
             { title: 'Digital Asset Declaration', desc: 'Formal declaration of digital asset holdings', icon: Shield },
           ].map((doc, i) => (
-            <div key={i} className="bg-zinc-900/60 backdrop-blur border border-zinc-800 rounded-2xl p-6 hover:border-orange-500/50 transition-colors cursor-pointer group">
+            <div key={i} onClick={() => generateSingleDoc(doc.title, selectedState)} className="bg-zinc-900/60 backdrop-blur border border-zinc-800 rounded-2xl p-6 hover:border-orange-500/50 transition-colors cursor-pointer group">
               <div className="flex items-start gap-4">
                 <div className="w-12 h-12 rounded-xl bg-zinc-800 flex items-center justify-center group-hover:bg-orange-500/10 transition-colors">
                   <doc.icon size={24} className="text-zinc-500 group-hover:text-orange-400 transition-colors" />
@@ -1341,7 +1638,7 @@ const SatsLegacy = () => {
           ))}
         </div>
 
-        <button className="w-full py-4 bg-gradient-to-r from-orange-500 to-orange-600 text-black font-semibold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+        <button onClick={() => generateLegalDocs(selectedState)} className="w-full py-4 bg-gradient-to-r from-orange-500 to-orange-600 text-black font-semibold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
           <FileText size={20} />
           Generate All Documents for {selectedState}
         </button>
@@ -1408,8 +1705,8 @@ const SatsLegacy = () => {
     );
   };
 
-  // Settings Modal
-  const SettingsModal = () => (
+  const SettingsModal = () => {
+    return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-lg">
         <div className="flex items-center justify-between p-6 border-b border-zinc-800">
@@ -1509,7 +1806,9 @@ const SatsLegacy = () => {
         </div>
       </div>
     </div>
-  );
+    );
+  };
+
 
   // Loading screen
   if (isLoading) {
@@ -1568,6 +1867,8 @@ const SatsLegacy = () => {
 
       {showAddBeneficiary && selectedVault && <AddBeneficiaryModal />}
 
+      {showExportModal && selectedVault && <ExportModal />}
+
       {showPasswordModal && (
         <PasswordModal
           mode={showPasswordModal}
@@ -1588,6 +1889,7 @@ const SatsLegacy = () => {
 };
 
 export default SatsLegacy;
+
 
 
 
