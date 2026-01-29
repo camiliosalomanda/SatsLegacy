@@ -91,7 +91,7 @@ ${kitOptions.includeVaultDocs ? `<h2>Vault Information</h2><div class="info-grid
 ${kitOptions.includeKeyInfo ? `<h2>Your Inheritance Share</h2><div class="info-grid"><span class="info-label">Your Percentage:</span><span>${selectedBeneficiary.percentage}%</span><span class="info-label">Your Amount:</span><span><strong>${shareAmount} BTC</strong></span></div>${selectedBeneficiary.pubkey ? `<h3>Your Public Key</h3><div class="address">${selectedBeneficiary.pubkey}</div>` : ''}` : ''}
 ${kitOptions.includeRecoveryInstructions ? `<h2>How to Claim Your Inheritance</h2><p style="margin-bottom:16px;color:#666">Follow these steps carefully after the timelock has expired:</p>${instructions.map(inst => `<div class="step"><div class="step-number">${inst.step}</div><div class="step-content"><div class="step-title">${inst.title}</div><div class="step-desc">${inst.description}</div><div class="step-simple">💡 ${inst.simple}</div></div></div>`).join('')}` : ''}
 ${kitOptions.includeCoHeirContacts && beneficiaryList.length > 1 ? `<h2>Other Beneficiaries</h2><p>You may need to coordinate with these co-heirs:</p><ul style="margin:12px 0 12px 24px">${beneficiaryList.filter(b => b.name !== selectedBeneficiary.name).map(b => `<li><strong>${b.name}</strong> (${b.percentage}%)</li>`).join('')}</ul>` : ''}
-<div class="resources"><h2 style="margin-top:0">Important Resources</h2><div class="resource"><div class="resource-name">Sparrow Wallet Download</div><div class="resource-url">sparrowwallet.com/download</div></div><div class="resource"><div class="resource-name">Bitcoin Block Explorer</div><div class="resource-url">mempool.space</div></div><div class="resource"><div class="resource-name">SatsLegacy Claim Portal</div><div class="resource-url">btc-trust.vercel.app/#/claim</div></div></div>
+<div class="resources"><h2 style="margin-top:0">Important Resources</h2><div class="resource"><div class="resource-name">Sparrow Wallet Download</div><div class="resource-url">sparrowwallet.com/download</div></div><div class="resource"><div class="resource-name">Bitcoin Block Explorer</div><div class="resource-url">mempool.space</div></div><div class="resource"><div class="resource-name">SatsLegacy Claim Portal</div><div class="resource-url">satslegacy.io/#/claim</div></div></div>
 <div class="warning" style="background:#f0f9ff;border-color:#3b82f6"><div class="warning-title">🔒 Security Reminders</div><ul style="margin:8px 0 0 20px"><li>Never share your hardware wallet PIN or seed phrase</li><li>Verify all addresses on your hardware wallet screen</li><li>When in doubt, ask a trusted technical friend for help</li></ul></div>
 <div class="footer"><p>SatsLegacy - Sovereign Bitcoin Inheritance</p><p>Not your keys, not your coins. Not your script, not your inheritance.</p></div>
 </body></html>`;
@@ -133,8 +133,8 @@ ${kitOptions.includeCoHeirContacts && beneficiaryList.length > 1 ? `<h2>Other Be
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => onClose()}>
+      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="p-6 border-b border-zinc-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center">
@@ -145,7 +145,7 @@ ${kitOptions.includeCoHeirContacts && beneficiaryList.length > 1 ? `<h2>Other Be
               <p className="text-sm text-zinc-500">Create inheritance package for beneficiary</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-zinc-800 rounded-lg transition-colors">
+          <button type="button" onClick={() => onClose()} className="p-2 hover:bg-zinc-800 rounded-lg transition-colors">
             <X className="w-5 h-5 text-zinc-400" />
           </button>
         </div>

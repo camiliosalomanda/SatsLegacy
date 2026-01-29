@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import type { Vault, Beneficiary, PendingVaultData } from '../types/vault';
+import type { NetworkType } from '../types/settings';
 import { fetchAddressBalance } from '../utils/api/blockchain';
 
 // Check if running in Electron
@@ -13,12 +14,14 @@ interface VaultContextValue {
   isLoading: boolean;
   hasUnsavedChanges: boolean;
   pendingVaultData: PendingVaultData | null;
+  isDuressMode: boolean;
 
   // Vault selection
   selectVault: (vault: Vault | null) => void;
 
   // Vault CRUD
   loadVaults: () => Promise<void>;
+  loadVaultsWithPassword: (password: string) => Promise<{ isDuress: boolean }>;
   createVault: (config: unknown, name: string, description: string) => void;
   saveVaultWithPassword: (password: string) => Promise<void>;
   deleteVault: (vaultId: string) => Promise<void>;
@@ -37,8 +40,11 @@ interface VaultContextValue {
   setPendingVaultData: (data: PendingVaultData | null) => void;
 
   // Balance updates
-  updateVaultBalances: (btcPrice: number, network: 'mainnet' | 'testnet') => Promise<void>;
+  updateVaultBalances: (btcPrice: number, network: NetworkType) => Promise<void>;
   updateVaultUSDValues: (btcPrice: number) => void;
+
+  // Duress mode
+  exitDuressMode: () => void;
 }
 
 const VaultContext = createContext<VaultContextValue | null>(null);
@@ -49,6 +55,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [pendingVaultData, setPendingVaultData] = useState<PendingVaultData | null>(null);
+  const [isDuressMode, setIsDuressMode] = useState(false);
 
   const selectVault = useCallback((vault: Vault | null) => {
     setSelectedVault(vault);
@@ -87,6 +94,107 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     }
 
     setIsLoading(false);
+  }, []);
+
+  // Load vaults with duress password check
+  const loadVaultsWithPassword = useCallback(async (password: string): Promise<{ isDuress: boolean }> => {
+    if (!isElectron || !electronAPI) {
+      await loadVaults();
+      return { isDuress: false };
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Check if this is a duress password
+      const duressCheck = await electronAPI.duress.checkPassword(password);
+
+      if (duressCheck.success && duressCheck.isDuress) {
+        // Load settings to check duress action
+        const settingsResult = await electronAPI.settings.load();
+        const settings = settingsResult.settings;
+        const duressAction = settings?.duress?.action || 'show_decoy';
+
+        // Execute duress action
+        if (duressAction === 'wipe_only') {
+          // Wipe all vaults and show empty state
+          await electronAPI.duress.executeWipe();
+          setVaults([]);
+          setIsDuressMode(true);
+        } else if (duressAction === 'show_decoy_and_wipe') {
+          // Wipe real vaults and show decoy
+          await electronAPI.duress.executeWipe();
+          const decoyResult = await electronAPI.duress.getDecoyVaults();
+          if (decoyResult.success && decoyResult.vaults) {
+            const decoyVaults = decoyResult.vaults.map((meta: Record<string, unknown>) => ({
+              id: meta.vault_id,
+              vault_id: meta.vault_id,
+              name: meta.name || 'Vault',
+              description: meta.description || '',
+              balance: meta.balance || 0,
+              balanceUSD: meta.balanceUSD || 0,
+              address: meta.address || '',
+              status: 'active',
+              scriptType: 'timelock',
+              lockDate: meta.lockDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+              beneficiaries: meta.beneficiaries || [],
+              ownerPubkey: '',
+              isDecoy: true
+            }));
+            setVaults(decoyVaults as Vault[]);
+          }
+          setIsDuressMode(true);
+        } else {
+          // Just show decoy vaults (default)
+          const decoyResult = await electronAPI.duress.getDecoyVaults();
+          if (decoyResult.success && decoyResult.vaults) {
+            const decoyVaults = decoyResult.vaults.map((meta: Record<string, unknown>) => ({
+              id: meta.vault_id,
+              vault_id: meta.vault_id,
+              name: meta.name || 'Vault',
+              description: meta.description || '',
+              balance: meta.balance || 0,
+              balanceUSD: meta.balanceUSD || 0,
+              address: meta.address || '',
+              status: 'active',
+              scriptType: 'timelock',
+              lockDate: meta.lockDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+              beneficiaries: meta.beneficiaries || [],
+              ownerPubkey: '',
+              isDecoy: true
+            }));
+            setVaults(decoyVaults as Vault[]);
+          }
+          setIsDuressMode(true);
+        }
+
+        // Send silent alert if configured
+        if (settings?.duress?.silentAlert) {
+          electronAPI.duress.sendSilentAlert().catch(() => {
+            // Silent failure - don't alert attacker
+          });
+        }
+
+        setIsLoading(false);
+        return { isDuress: true };
+      }
+
+      // Normal password - load real vaults
+      await loadVaults();
+      setIsDuressMode(false);
+      return { isDuress: false };
+    } catch (e) {
+      console.error('Failed to check duress password:', e);
+      await loadVaults();
+      setIsLoading(false);
+      return { isDuress: false };
+    }
+  }, [loadVaults]);
+
+  const exitDuressMode = useCallback(() => {
+    setIsDuressMode(false);
+    setVaults([]);
+    setSelectedVault(null);
   }, []);
 
   const createVault = useCallback((config: unknown, name: string, description: string) => {
@@ -267,7 +375,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     setHasUnsavedChanges(true);
   }, [selectedVault]);
 
-  const updateVaultBalances = useCallback(async (btcPrice: number, network: 'mainnet' | 'testnet') => {
+  const updateVaultBalances = useCallback(async (btcPrice: number, network: NetworkType) => {
     const updatedVaults = await Promise.all(
       vaults.map(async (vault) => {
         if (vault.address) {
@@ -303,8 +411,10 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       isLoading,
       hasUnsavedChanges,
       pendingVaultData,
+      isDuressMode,
       selectVault,
       loadVaults,
+      loadVaultsWithPassword,
       createVault,
       saveVaultWithPassword,
       deleteVault,
@@ -318,7 +428,8 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       setHasUnsavedChanges,
       setPendingVaultData,
       updateVaultBalances,
-      updateVaultUSDValues
+      updateVaultUSDValues,
+      exitDuressMode
     }}>
       {children}
     </VaultContext.Provider>

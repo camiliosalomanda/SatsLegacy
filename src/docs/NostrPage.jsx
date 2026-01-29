@@ -63,11 +63,76 @@ const NostrPage = () => {
         </section>
 
         <section className="mb-12">
+          <h2 className="text-2xl font-bold text-white mb-6">🔐 Security Implementation</h2>
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+            <div className="space-y-4">
+              <div className="bg-zinc-800/50 rounded-lg p-4">
+                <h4 className="text-white font-mono text-sm mb-2">Event Kind</h4>
+                <p className="text-purple-400 font-mono">30078 (NIP-78 Parameterized Replaceable Events)</p>
+                <p className="text-xs text-zinc-500 mt-1">Allows updating vault data without creating duplicate events</p>
+              </div>
+              <div className="bg-zinc-800/50 rounded-lg p-4">
+                <h4 className="text-white font-mono text-sm mb-2">Heartbeat Events</h4>
+                <p className="text-purple-400 font-mono">Kind 30079 for Dead Man's Switch</p>
+                <p className="text-xs text-zinc-500 mt-1">Heirs can monitor for missed heartbeats without decrypting vault</p>
+              </div>
+              <div className="bg-zinc-800/50 rounded-lg p-4">
+                <h4 className="text-white font-mono text-sm mb-2">Encryption</h4>
+                <p className="text-purple-400 font-mono">AES-256-GCM (encrypted before publishing)</p>
+                <p className="text-xs text-zinc-500 mt-1">Relay operators cannot read vault contents</p>
+              </div>
+              <div className="bg-zinc-800/50 rounded-lg p-4">
+                <h4 className="text-white font-mono text-sm mb-2">Default Relays</h4>
+                <p className="text-purple-400 font-mono text-xs">relay.damus.io • nos.lol • relay.nostr.band • relay.snort.social</p>
+                <p className="text-xs text-zinc-500 mt-1">Multiple relays for redundancy - configurable</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold text-white mb-6">Security Model</h2>
+          <div className="space-y-4">
+            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+              <h4 className="text-green-200 font-medium mb-2">✓ What's Protected</h4>
+              <ul className="text-sm text-green-200/70 space-y-1">
+                <li>• Vault data encrypted client-side before upload</li>
+                <li>• Relay operators see only encrypted blobs</li>
+                <li>• No authentication needed - uses ephemeral keys</li>
+                <li>• Multiple relay redundancy prevents data loss</li>
+              </ul>
+            </div>
+            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+              <h4 className="text-yellow-200 font-medium mb-2">⚠ Considerations</h4>
+              <ul className="text-sm text-yellow-200/70 space-y-1">
+                <li>• Relays can see when you publish (timing metadata)</li>
+                <li>• Public key links all your vault events together</li>
+                <li>• Event deletion not guaranteed (some relays may retain)</li>
+                <li>• Use with Tor for enhanced privacy</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold text-white mb-6">Heir Recovery Process</h2>
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+            <ol className="space-y-3 text-zinc-300">
+              <li className="flex gap-3"><span className="text-orange-500 font-medium">1.</span>Heir obtains your Nostr public key from heir kit</li>
+              <li className="flex gap-3"><span className="text-orange-500 font-medium">2.</span>Query configured relays for events from that pubkey</li>
+              <li className="flex gap-3"><span className="text-orange-500 font-medium">3.</span>Download encrypted vault data (Kind 30078 events)</li>
+              <li className="flex gap-3"><span className="text-orange-500 font-medium">4.</span>Decrypt with password from heir kit</li>
+              <li className="flex gap-3"><span className="text-orange-500 font-medium">5.</span>Import into SatsLegacy to claim inheritance</li>
+            </ol>
+          </div>
+        </section>
+
+        <section className="mb-12">
           <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 flex gap-3">
             <AlertTriangle size={20} className="text-yellow-500 flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-yellow-200 font-medium">Optional Feature</p>
-              <p className="text-sm text-yellow-200/70 mt-1">Nostr backup is optional. You can use SatsLegacy entirely offline with local-only storage.</p>
+              <p className="text-sm text-yellow-200/70 mt-1">Nostr backup is optional. You can use SatsLegacy entirely offline with local-only storage. Consider Nostr for geographic redundancy and heir accessibility.</p>
             </div>
           </div>
         </section>

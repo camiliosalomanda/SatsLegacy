@@ -34,8 +34,8 @@ export function VaultsView() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {vaults.map(vault => (
-          <VaultCard key={vault.id || vault.vault_id} vault={vault} showDelete={true} />
+        {vaults.map((vault, index) => (
+          <VaultCard key={vault.id || vault.vault_id || `vault-${index}`} vault={vault} showDelete={true} />
         ))}
 
         <div

@@ -48,6 +48,16 @@ export function OwnerKeyModal() {
             </ul>
           </div>
 
+          {/* Security Notes */}
+          <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+            <p className="text-xs text-green-300 font-medium mb-1">🔐 SECURITY NOTES</p>
+            <ul className="text-xs text-green-300/70 space-y-1">
+              <li>• <strong>xpub is NOT a private key</strong> - safe to share for receiving</li>
+              <li>• Never enter your seed phrase or private key here</li>
+              <li>• Keep the corresponding private key secure on your hardware wallet</li>
+            </ul>
+          </div>
+
           <div>
             <label className="block text-sm text-zinc-400 mb-2">Public Key / xpub</label>
             <input

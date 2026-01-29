@@ -1,11 +1,12 @@
 /**
  * BitTrust Miniscript Policy Generator
- * 
+ *
  * Generates Miniscript policies from vault configurations.
  * These policies compile to Bitcoin Script for on-chain inheritance.
  */
 
 import type { VaultConfiguration, InheritanceLogic } from '../creation/validation/compatibility';
+import { compilePolicy as compileMiniscriptPolicy, compileMiniscript as compileMiniscriptToAsm, satisfier } from '@bitcoinerlab/miniscript';
 
 // ============================================
 // TYPE DEFINITIONS
@@ -280,30 +281,107 @@ export function generateStaggeredPolicies(
 }
 
 // ============================================
-// MINISCRIPT COMPILER (Simplified)
+// MINISCRIPT COMPILER
 // ============================================
 
-/**
- * Compile policy to Miniscript
- * 
- * Note: This is a simplified compiler for demonstration.
- * Production should use rust-miniscript via WASM or a full implementation.
- */
-export function compileToMiniscript(policy: string): string {
-  // In production, this would call rust-miniscript
-  // For now, we return the policy as it's already in Miniscript-like format
-  return policy
+export interface MiniscriptCompileResult {
+  miniscript: string;
+  asm: string;
+  isValid: boolean;
+  isSaneSublevel: boolean;
+}
+
+export interface ScriptCompileResult {
+  asm: string;
+  isValid: boolean;
+  isSaneSublevel: boolean;
+}
+
+export interface SatisfactionPath {
+  asm: string;
+  nLockTime?: number;
+  nSequence?: number;
 }
 
 /**
- * Compile Miniscript to Bitcoin Script (hex)
- * 
- * Simplified implementation - production should use proper compiler
+ * Compile policy to Miniscript using @bitcoinerlab/miniscript
+ *
+ * @param policy - Human-readable policy string (e.g., "or(pk(A),and(pk(B),after(100)))")
+ * @returns Compiled miniscript result with ASM and validity flags
  */
-export function compileToScript(miniscript: string): string {
-  // This is a placeholder - actual compilation is complex
-  // Would involve translating Miniscript AST to opcodes
-  throw new Error('Script compilation requires rust-miniscript WASM module')
+export function compileToMiniscript(policy: string): MiniscriptCompileResult {
+  try {
+    const result = compileMiniscriptPolicy(policy);
+    return {
+      miniscript: result.miniscript,
+      asm: result.asm,
+      isValid: result.issane,
+      isSaneSublevel: result.issanesublevel
+    };
+  } catch (error) {
+    console.error('Policy compilation failed:', error);
+    return {
+      miniscript: '',
+      asm: '',
+      isValid: false,
+      isSaneSublevel: false
+    };
+  }
+}
+
+/**
+ * Compile Miniscript to Bitcoin Script ASM
+ *
+ * @param miniscript - Miniscript string to compile
+ * @returns Compiled script result with ASM and validity flags
+ */
+export function compileToScript(miniscript: string): ScriptCompileResult {
+  try {
+    const result = compileMiniscriptToAsm(miniscript);
+    return {
+      asm: result.asm,
+      isValid: result.issane,
+      isSaneSublevel: result.issanesublevel
+    };
+  } catch (error) {
+    console.error('Miniscript compilation failed:', error);
+    return {
+      asm: '',
+      isValid: false,
+      isSaneSublevel: false
+    };
+  }
+}
+
+/**
+ * Get witness satisfaction paths for a miniscript
+ *
+ * Returns the different ways a miniscript can be satisfied,
+ * including required timelocks (nLockTime/nSequence).
+ *
+ * @param miniscript - Miniscript to analyze
+ * @returns Object containing unknown, non-malleable, and malleable satisfaction paths
+ */
+export function getWitnessSatisfaction(miniscript: string): {
+  unknownSats: SatisfactionPath[];
+  nonMalleableSats: SatisfactionPath[];
+  malleableSats: SatisfactionPath[];
+} {
+  try {
+    const result = satisfier(miniscript);
+    return {
+      unknownSats: result.unknownSats || [],
+      nonMalleableSats: result.nonMalleableSats || [],
+      malleableSats: result.malleableSats || []
+    };
+  } catch (error) {
+    console.error('Satisfaction analysis failed:', error);
+    return {
+      unknownSats: [],
+      nonMalleableSats: [],
+      malleableSats: []
+    };
+  }
 }
 
 // ============================================
@@ -449,6 +527,8 @@ export default {
   generatePolicy,
   generateStaggeredPolicies,
   compileToMiniscript,
+  compileToScript,
+  getWitnessSatisfaction,
   extractRedeemInfo,
   analyzePolicy
 }

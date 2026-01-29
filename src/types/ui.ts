@@ -11,6 +11,10 @@ export type ModalType =
   | { type: 'delete'; vault: Vault }
   | { type: 'edit' }
   | { type: 'settings' }
+  | { type: 'psbt'; vault: Vault }
+  | { type: 'psbtImport'; vault: Vault }
+  | { type: 'checkIn'; vault: Vault }
+  | { type: 'decoyVaults' }
   | null;
 
 export interface EditFormData {

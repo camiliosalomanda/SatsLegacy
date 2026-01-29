@@ -8,6 +8,10 @@ import { OwnerKeyModal } from './OwnerKeyModal';
 import { DeleteVaultModal } from './DeleteVaultModal';
 import { EditVaultModal } from './EditVaultModal';
 import { SettingsModal } from './SettingsModal';
+import { PSBTExportModal } from './PSBTExportModal';
+import { PSBTImportModal } from './PSBTImportModal';
+import { CheckInModal } from './CheckInModal';
+import { DecoyVaultModal } from './DecoyVaultModal';
 
 interface ModalRendererProps {
   onPasswordSubmit?: (password: string) => void;
@@ -41,6 +45,14 @@ export function ModalRenderer({ onPasswordSubmit, onPasswordCancel }: ModalRende
       return selectedVault ? <EditVaultModal /> : null;
     case 'settings':
       return <SettingsModal />;
+    case 'psbt':
+      return <PSBTExportModal vault={activeModal.vault} />;
+    case 'psbtImport':
+      return <PSBTImportModal vault={activeModal.vault} />;
+    case 'checkIn':
+      return <CheckInModal vault={activeModal.vault} />;
+    case 'decoyVaults':
+      return <DecoyVaultModal />;
     default:
       return null;
   }

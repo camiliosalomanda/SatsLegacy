@@ -28,13 +28,31 @@ export function Sidebar() {
       )}
 
       {/* Logo */}
-      <div className="flex items-center gap-3 px-2 mb-8">
+      <div className="flex items-center gap-3 px-2 mb-4">
         <img src="./logo.jpg" alt="SatsLegacy" className="w-10 h-10 rounded-full" />
         <div>
           <h1 className="text-xl font-bold text-white tracking-tight">SatsLegacy</h1>
           <p className="text-xs text-zinc-500">Sovereign Inheritance</p>
         </div>
       </div>
+
+      {/* Testnet/Signet Warning Banner */}
+      {settings.network !== 'mainnet' && (
+        <div className={`mb-4 px-3 py-2 rounded-lg border ${
+          settings.network === 'testnet'
+            ? 'bg-yellow-500/10 border-yellow-500/30'
+            : 'bg-purple-500/10 border-purple-500/30'
+        }`}>
+          <span className={`text-xs font-bold uppercase tracking-wider ${
+            settings.network === 'testnet' ? 'text-yellow-400' : 'text-purple-400'
+          }`}>
+            ⚠ {settings.network} Mode
+          </span>
+          <p className="text-xs text-zinc-400 mt-1">
+            {settings.network === 'testnet' ? 'Using testnet - not real BTC' : 'Using signet - not real BTC'}
+          </p>
+        </div>
+      )}
 
       {/* Navigation */}
       <nav className="space-y-1 flex-1">

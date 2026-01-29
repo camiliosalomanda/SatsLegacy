@@ -90,6 +90,17 @@ export function AddBeneficiaryModal() {
             <p className="text-xs text-zinc-600 mt-2">Get this from the beneficiary's hardware wallet</p>
           </div>
 
+          {/* Security Notes */}
+          <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+            <p className="text-xs text-blue-300 font-medium mb-1">🔐 HEIR KEY SECURITY</p>
+            <ul className="text-xs text-blue-300/70 space-y-1">
+              <li>• Heir's xpub gives them spending rights <strong>after timelock expires</strong></li>
+              <li>• Heir cannot spend before the timelock - enforced by Bitcoin consensus</li>
+              <li>• Verify the public key belongs to the intended beneficiary</li>
+              <li>• Include this key in their heir kit for inheritance claim</li>
+            </ul>
+          </div>
+
           {error && <p className="text-red-400 text-sm">{error}</p>}
 
           <button

@@ -84,6 +84,91 @@ const HardwareWalletsPage = () => {
         </section>
 
         <section className="mb-12">
+          <h2 className="text-2xl font-bold text-white mb-6">🔐 PSBT Security Model</h2>
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+            <p className="text-zinc-400 mb-4">Why PSBT export is more secure than direct device integration:</p>
+            <div className="space-y-4">
+              <div className="bg-zinc-800/50 rounded-lg p-4">
+                <h4 className="text-green-400 font-medium mb-2">✓ Air-Gap Capable</h4>
+                <p className="text-xs text-zinc-400">PSBT can be transferred via SD card or QR code - no USB connection required. Coldcard's SD card workflow is fully supported.</p>
+              </div>
+              <div className="bg-zinc-800/50 rounded-lg p-4">
+                <h4 className="text-green-400 font-medium mb-2">✓ No Driver Dependencies</h4>
+                <p className="text-xs text-zinc-400">No special drivers or software. Works with any device that supports BIP-174 PSBT standard.</p>
+              </div>
+              <div className="bg-zinc-800/50 rounded-lg p-4">
+                <h4 className="text-green-400 font-medium mb-2">✓ Malware Resistant</h4>
+                <p className="text-xs text-zinc-400">Even if SatsLegacy were compromised, it cannot steal keys. Worst case: creates malicious transaction that you would verify and reject on device.</p>
+              </div>
+              <div className="bg-zinc-800/50 rounded-lg p-4">
+                <h4 className="text-green-400 font-medium mb-2">✓ Device Agnostic</h4>
+                <p className="text-xs text-zinc-400">Same workflow works with any hardware wallet. No vendor lock-in or proprietary protocols.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold text-white mb-6">PSBT Workflow</h2>
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+            <ol className="space-y-4 text-zinc-300">
+              <li className="flex gap-3">
+                <span className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-black font-bold flex-shrink-0">1</span>
+                <div>
+                  <p className="font-medium">Create PSBT in SatsLegacy</p>
+                  <p className="text-xs text-zinc-500">Unsigned transaction with all required metadata</p>
+                </div>
+              </li>
+              <li className="flex gap-3">
+                <span className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-black font-bold flex-shrink-0">2</span>
+                <div>
+                  <p className="font-medium">Export to Hardware Wallet</p>
+                  <p className="text-xs text-zinc-500">Via file (.psbt), QR code, or SD card</p>
+                </div>
+              </li>
+              <li className="flex gap-3">
+                <span className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-black font-bold flex-shrink-0">3</span>
+                <div>
+                  <p className="font-medium">Review on Device</p>
+                  <p className="text-xs text-zinc-500">Verify addresses, amounts, and fees on hardware wallet screen</p>
+                </div>
+              </li>
+              <li className="flex gap-3">
+                <span className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-black font-bold flex-shrink-0">4</span>
+                <div>
+                  <p className="font-medium">Sign on Device</p>
+                  <p className="text-xs text-zinc-500">Physical button press required - cannot be done remotely</p>
+                </div>
+              </li>
+              <li className="flex gap-3">
+                <span className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-black font-bold flex-shrink-0">5</span>
+                <div>
+                  <p className="font-medium">Import Signed PSBT</p>
+                  <p className="text-xs text-zinc-500">Back to SatsLegacy for broadcast</p>
+                </div>
+              </li>
+              <li className="flex gap-3">
+                <span className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-black font-bold flex-shrink-0">6</span>
+                <div>
+                  <p className="font-medium">Broadcast to Network</p>
+                  <p className="text-xs text-zinc-500">Optionally through Tor for privacy</p>
+                </div>
+              </li>
+            </ol>
+          </div>
+        </section>
+
+        <section className="mb-12">
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 flex gap-3">
+            <AlertTriangle size={20} className="text-red-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-red-200 font-medium">Critical: Always Verify on Device</p>
+              <p className="text-sm text-red-200/70 mt-1">Never trust addresses shown only on your computer. A compromised computer could display a different address than what's in the transaction. Your hardware wallet screen is the source of truth.</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="mb-12">
           <h2 className="text-2xl font-bold text-white mb-6">Best Practices</h2>
           <div className="space-y-3">
             <div className="flex items-start gap-3 bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">

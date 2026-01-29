@@ -64,6 +64,60 @@ const ShamirPage = () => {
           </div>
         </section>
 
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold text-white mb-6">🔐 Implementation Details</h2>
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+            <div className="space-y-4">
+              <div className="bg-zinc-800/50 rounded-lg p-4">
+                <h4 className="text-white font-mono text-sm mb-2">Field Arithmetic</h4>
+                <p className="text-purple-400 font-mono">GF(256) with AES polynomial (0x11B)</p>
+                <p className="text-xs text-zinc-500 mt-1">Same finite field as AES encryption - well-studied cryptographic primitive</p>
+              </div>
+              <div className="bg-zinc-800/50 rounded-lg p-4">
+                <h4 className="text-white font-mono text-sm mb-2">Interpolation</h4>
+                <p className="text-purple-400 font-mono">Lagrange polynomial interpolation</p>
+                <p className="text-xs text-zinc-500 mt-1">Reconstructs secret from K points on the polynomial</p>
+              </div>
+              <div className="bg-zinc-800/50 rounded-lg p-4">
+                <h4 className="text-white font-mono text-sm mb-2">Share Format</h4>
+                <p className="text-purple-400 font-mono">Multiple formats: Hex, Base32, QR Code, Printable</p>
+                <p className="text-xs text-zinc-500 mt-1">Choose format based on storage medium</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold text-white mb-6">Security Considerations</h2>
+          <div className="space-y-4">
+            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+              <h4 className="text-green-200 font-medium mb-2">✓ Information-Theoretic Security</h4>
+              <p className="text-sm text-green-200/70">With K-1 shares, an attacker has zero information about the secret. This is mathematically proven, not just computationally hard.</p>
+            </div>
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+              <h4 className="text-red-200 font-medium mb-2">✗ Critical Warnings</h4>
+              <ul className="text-sm text-red-200/70 space-y-1">
+                <li>• <strong>Reconstruction Risk:</strong> Secret exists in memory during reconstruction</li>
+                <li>• <strong>Single Point of Failure:</strong> All K shares combined = secret exposed</li>
+                <li>• <strong>Trust Distribution:</strong> K shareholders can collude</li>
+                <li>• <strong>Not for Spending:</strong> Use multisig on-chain, not SSS for spending keys</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold text-white mb-6">Best Practices</h2>
+          <div className="space-y-3">
+            <div className="flex items-start gap-3"><CheckCircle size={20} className="text-green-500 mt-0.5" /><span className="text-zinc-300">Use SSS for backup encryption keys, not Bitcoin private keys</span></div>
+            <div className="flex items-start gap-3"><CheckCircle size={20} className="text-green-500 mt-0.5" /><span className="text-zinc-300">Distribute shares to geographically diverse locations</span></div>
+            <div className="flex items-start gap-3"><CheckCircle size={20} className="text-green-500 mt-0.5" /><span className="text-zinc-300">Store shares on different media types (paper, steel, digital)</span></div>
+            <div className="flex items-start gap-3"><CheckCircle size={20} className="text-green-500 mt-0.5" /><span className="text-zinc-300">Test reconstruction procedure annually</span></div>
+            <div className="flex items-start gap-3"><CheckCircle size={20} className="text-green-500 mt-0.5" /><span className="text-zinc-300">Include instructions with each share for heirs</span></div>
+            <div className="flex items-start gap-3"><CheckCircle size={20} className="text-green-500 mt-0.5" /><span className="text-zinc-300">Consider 3-of-5 for balance of security and recoverability</span></div>
+          </div>
+        </section>
+
         <div className="border-t border-zinc-800 pt-8">
           <p className="text-zinc-500 text-sm text-center">Not your keys, not your coins. Not your script, not your inheritance.</p>
         </div>

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import {
-  Lock, ChevronRight, Save, Key, Users, Trash2, UserPlus, Download, FileText, Package,
-  Edit3, Check, Copy, QrCode, AlertTriangle
+  Lock, ChevronRight, Save, Key, Users, Trash2, UserPlus, Download, Upload, FileText, Package,
+  Edit3, Check, Copy, QrCode, AlertTriangle, Heart, Clock, RefreshCw
 } from 'lucide-react';
 import { useVaults } from '../contexts/VaultContext';
 import { useUI } from '../contexts/UIContext';
 import { usePrice } from '../contexts/PriceContext';
+import { useSettings } from '../contexts/SettingsContext';
 import { getDaysUntilUnlock } from '../utils/vault-helpers';
 import { copyToClipboard } from '../utils/clipboard';
 import type { Vault } from '../types/vault';
@@ -18,6 +19,7 @@ export function VaultDetailView({ vault }: VaultDetailViewProps) {
   const { selectVault, hasUnsavedChanges, saveVaultChanges, removeBeneficiary } = useVaults();
   const { setCurrentView, openModal, setEditFormData, setShowHeirKitGenerator } = useUI();
   const { copiedAddress, setCopiedAddress } = usePrice();
+  const { settings } = useSettings();
 
   const daysUntil = getDaysUntilUnlock(vault);
 
@@ -136,7 +138,20 @@ export function VaultDetailView({ vault }: VaultDetailViewProps) {
 
       {/* Vault Address Section */}
       <div className="bg-zinc-900/60 backdrop-blur border border-zinc-800 rounded-2xl p-6">
-        <h3 className="text-lg font-semibold text-white mb-4">Vault Address</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white">Vault Address</h3>
+          {vault.address && (
+            <span className={`text-xs px-2 py-1 rounded font-medium ${
+              settings.network === 'mainnet'
+                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                : settings.network === 'testnet'
+                ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+            }`}>
+              {settings.network}
+            </span>
+          )}
+        </div>
         {vault.address ? (
           <div className="flex items-center gap-3 p-4 bg-zinc-800/50 rounded-xl">
             <code className="flex-1 text-sm text-zinc-300 font-mono break-all">{vault.address}</code>
@@ -155,6 +170,92 @@ export function VaultDetailView({ vault }: VaultDetailViewProps) {
           </div>
         )}
       </div>
+
+      {/* Check-In Section - Only for Dead Man's Switch vaults */}
+      {vault.logic?.primary === 'dead_man_switch' && (
+        <div className="bg-zinc-900/60 backdrop-blur border border-zinc-800 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                vault.checkIn?.status === 'critical' ? 'bg-red-500/20' :
+                vault.checkIn?.status === 'warning' ? 'bg-yellow-500/20' :
+                'bg-green-500/20'
+              }`}>
+                <Heart size={20} className={
+                  vault.checkIn?.status === 'critical' ? 'text-red-400' :
+                  vault.checkIn?.status === 'warning' ? 'text-yellow-400' :
+                  'text-green-400'
+                } />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-white">Dead Man's Switch</h3>
+                <p className="text-sm text-zinc-500">Periodic check-in required</p>
+              </div>
+            </div>
+            <button
+              onClick={() => openModal({ type: 'checkIn', vault })}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                vault.checkIn?.status === 'critical'
+                  ? 'bg-red-500 text-white hover:bg-red-600'
+                  : vault.checkIn?.status === 'warning'
+                  ? 'bg-yellow-500 text-black hover:bg-yellow-600'
+                  : 'bg-green-500 text-black hover:bg-green-600'
+              }`}
+            >
+              <RefreshCw size={16} />
+              Check In
+            </button>
+          </div>
+
+          <div className={`p-4 rounded-xl border ${
+            vault.checkIn?.status === 'critical' ? 'bg-red-500/10 border-red-500/30' :
+            vault.checkIn?.status === 'warning' ? 'bg-yellow-500/10 border-yellow-500/30' :
+            'bg-green-500/10 border-green-500/30'
+          }`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {vault.checkIn?.status === 'critical' ? (
+                  <AlertTriangle size={24} className="text-red-400" />
+                ) : vault.checkIn?.status === 'warning' ? (
+                  <Clock size={24} className="text-yellow-400" />
+                ) : (
+                  <Check size={24} className="text-green-400" />
+                )}
+                <div>
+                  <p className={`font-medium ${
+                    vault.checkIn?.status === 'critical' ? 'text-red-400' :
+                    vault.checkIn?.status === 'warning' ? 'text-yellow-400' :
+                    'text-green-400'
+                  }`}>
+                    {vault.checkIn?.status === 'critical' ? 'Check-in Urgently Required!' :
+                     vault.checkIn?.status === 'warning' ? 'Check-in Due Soon' :
+                     vault.checkIn?.status === 'expired' ? 'Check-in Expired - Heirs Can Claim' :
+                     'Vault Healthy'}
+                  </p>
+                  <p className="text-sm text-zinc-400">
+                    {vault.checkIn?.daysRemaining !== undefined
+                      ? `${vault.checkIn.daysRemaining} days until heir can claim`
+                      : `${vault.inactivityTrigger || 90} day inactivity period`}
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-white">
+                  {vault.checkIn?.daysRemaining ?? vault.inactivityTrigger ?? 90}
+                </p>
+                <p className="text-xs text-zinc-500">days remaining</p>
+              </div>
+            </div>
+          </div>
+
+          {vault.checkIn?.lastCheckIn && (
+            <div className="mt-4 flex items-center gap-2 text-sm text-zinc-400">
+              <Clock size={14} />
+              <span>Last check-in: {new Date(vault.checkIn.lastCheckIn).toLocaleDateString()}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Beneficiaries Section */}
       <div className="bg-zinc-900/60 backdrop-blur border border-zinc-800 rounded-2xl p-6">
@@ -200,15 +301,32 @@ export function VaultDetailView({ vault }: VaultDetailViewProps) {
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <button
-          onClick={() => alert("PSBT export requires vault address and keys to be configured.")}
-          className="flex items-center justify-center gap-2 p-4 bg-zinc-800 rounded-xl text-zinc-300 hover:bg-zinc-700 transition-colors"
-        >
-          <Download size={18} />
-          Export PSBT
-        </button>
+      {/* PSBT Actions */}
+      <div className="bg-zinc-900/60 backdrop-blur border border-zinc-800 rounded-2xl p-6">
+        <h3 className="text-lg font-semibold text-white mb-4">Transactions</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <button
+            onClick={() => openModal({ type: 'psbt', vault })}
+            className="flex items-center justify-center gap-2 p-4 bg-zinc-800 rounded-xl text-zinc-300 hover:bg-zinc-700 transition-colors"
+          >
+            <Download size={18} />
+            Create PSBT
+          </button>
+          <button
+            onClick={() => openModal({ type: 'psbtImport', vault })}
+            className="flex items-center justify-center gap-2 p-4 bg-green-500/20 border border-green-500/30 rounded-xl text-green-400 hover:bg-green-500/30 transition-colors"
+          >
+            <Upload size={18} />
+            Import & Broadcast
+          </button>
+        </div>
+        <p className="text-xs text-zinc-500 mt-3">
+          Create a PSBT to sign with your hardware wallet, then import the signed PSBT to broadcast.
+        </p>
+      </div>
+
+      {/* Other Actions */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <button
           onClick={() => openModal({ type: 'export' })}
           className="flex items-center justify-center gap-2 p-4 bg-zinc-800 rounded-xl text-zinc-300 hover:bg-zinc-700 transition-colors"
@@ -228,7 +346,7 @@ export function VaultDetailView({ vault }: VaultDetailViewProps) {
           className="flex items-center justify-center gap-2 p-4 bg-zinc-800 rounded-xl text-zinc-300 hover:bg-zinc-700 transition-colors"
         >
           <FileText size={18} />
-          Generate Legal Docs
+          Legal Docs
         </button>
       </div>
     </div>

@@ -5,4 +5,8 @@ export { OwnerKeyModal } from './OwnerKeyModal';
 export { DeleteVaultModal } from './DeleteVaultModal';
 export { EditVaultModal } from './EditVaultModal';
 export { SettingsModal } from './SettingsModal';
+export { PSBTExportModal } from './PSBTExportModal';
+export { PSBTImportModal } from './PSBTImportModal';
+export { CheckInModal } from './CheckInModal';
+export { DecoyVaultModal } from './DecoyVaultModal';
 export { ModalRenderer } from './ModalRenderer';

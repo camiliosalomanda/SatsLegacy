@@ -36,6 +36,38 @@ contextBridge.exposeInMainWorld('electronAPI', {
   system: {
     openExternal: (url) => ipcRenderer.invoke('system:openExternal', { url }),
     getAppInfo: () => ipcRenderer.invoke('system:getAppInfo')
+  },
+
+  // Notifications
+  notifications: {
+    sendCheckInReminder: (toEmail, vaultName, daysRemaining, status) =>
+      ipcRenderer.invoke('notifications:sendCheckInReminder', { toEmail, vaultName, daysRemaining, status }),
+    sendHeirNotification: (toEmail, vaultName, ownerName) =>
+      ipcRenderer.invoke('notifications:sendHeirNotification', { toEmail, vaultName, ownerName }),
+    testEmail: (toEmail) =>
+      ipcRenderer.invoke('notifications:testEmail', { toEmail })
+  },
+
+  // Duress protection
+  duress: {
+    setPassword: (password) => ipcRenderer.invoke('duress:setPassword', { password }),
+    removePassword: () => ipcRenderer.invoke('duress:removePassword'),
+    checkPassword: (password) => ipcRenderer.invoke('duress:checkPassword', { password }),
+    getDecoyVaults: () => ipcRenderer.invoke('duress:getDecoyVaults'),
+    createDecoyVault: (vault) => ipcRenderer.invoke('duress:createDecoyVault', { vault }),
+    deleteDecoyVault: (vaultId) => ipcRenderer.invoke('duress:deleteDecoyVault', { vaultId }),
+    executeWipe: () => ipcRenderer.invoke('duress:executeWipe'),
+    sendSilentAlert: () => ipcRenderer.invoke('duress:sendSilentAlert')
+  },
+
+  // Tor proxy operations
+  tor: {
+    // Make HTTP request through Tor SOCKS5 proxy
+    fetch: (url, options) => ipcRenderer.invoke('tor:fetch', { url, options }),
+    // Test Tor connection
+    testConnection: () => ipcRenderer.invoke('tor:testConnection'),
+    // Get current Tor status
+    getStatus: () => ipcRenderer.invoke('tor:getStatus')
   }
 });
 

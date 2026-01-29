@@ -66,6 +66,33 @@ const SecurityThreatsPage = () => {
               </div>
               <p className="text-sm text-zinc-400">Multisig configurations require multiple heirs to cooperate. No single party can access funds alone.</p>
             </div>
+
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <Wifi size={20} className="text-blue-500" />
+                <h3 className="font-semibold text-white">Network Surveillance</h3>
+                <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded">Mitigated</span>
+              </div>
+              <p className="text-sm text-zinc-400">Optional Tor routing hides your IP from blockchain APIs. ISP cannot see which addresses you query.</p>
+            </div>
+
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <AlertTriangle size={20} className="text-red-500" />
+                <h3 className="font-semibold text-white">Physical Coercion ($5 Wrench)</h3>
+                <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded">Mitigated</span>
+              </div>
+              <p className="text-sm text-zinc-400">Duress protection with decoy vaults provides plausible deniability. Cannot eliminate physical threats but reduces incentive.</p>
+            </div>
+
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <Server size={20} className="text-yellow-500" />
+                <h3 className="font-semibold text-white">Malware / Keyloggers</h3>
+                <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded">Mitigated</span>
+              </div>
+              <p className="text-sm text-zinc-400">Hardware wallet signing means even compromised computers cannot steal funds. PSBT workflow keeps private keys isolated.</p>
+            </div>
           </div>
         </section>
 

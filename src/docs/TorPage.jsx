@@ -65,9 +65,74 @@ const TorPage = () => {
         <section className="mb-12">
           <h2 className="text-2xl font-bold text-white mb-6">What Gets Routed</h2>
           <div className="space-y-3">
-            <div className="flex items-start gap-3"><CheckCircle size={20} className="text-green-500 mt-0.5" /><span className="text-zinc-300">Blockchain queries to Electrum servers</span></div>
-            <div className="flex items-start gap-3"><CheckCircle size={20} className="text-green-500 mt-0.5" /><span className="text-zinc-300">Nostr relay connections (if enabled)</span></div>
-            <div className="flex items-start gap-3"><CheckCircle size={20} className="text-green-500 mt-0.5" /><span className="text-zinc-300">Transaction broadcasts</span></div>
+            <div className="flex items-start gap-3"><CheckCircle size={20} className="text-green-500 mt-0.5" /><span className="text-zinc-300">Address balance queries (mempool.space, blockstream.info)</span></div>
+            <div className="flex items-start gap-3"><CheckCircle size={20} className="text-green-500 mt-0.5" /><span className="text-zinc-300">UTXO lookups for transaction building</span></div>
+            <div className="flex items-start gap-3"><CheckCircle size={20} className="text-green-500 mt-0.5" /><span className="text-zinc-300">Transaction broadcasts to the network</span></div>
+            <div className="flex items-start gap-3"><CheckCircle size={20} className="text-green-500 mt-0.5" /><span className="text-zinc-300">Fee rate estimation queries</span></div>
+            <div className="flex items-start gap-3"><CheckCircle size={20} className="text-green-500 mt-0.5" /><span className="text-zinc-300">Block height lookups</span></div>
+          </div>
+        </section>
+
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold text-white mb-6">🔐 Implementation Details</h2>
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+            <div className="space-y-4">
+              <div className="bg-zinc-800/50 rounded-lg p-4">
+                <h4 className="text-white font-mono text-sm mb-2">Protocol</h4>
+                <p className="text-purple-400 font-mono">SOCKS5 Proxy</p>
+                <p className="text-xs text-zinc-500 mt-1">Industry standard proxy protocol supported by Tor</p>
+              </div>
+              <div className="bg-zinc-800/50 rounded-lg p-4">
+                <h4 className="text-white font-mono text-sm mb-2">Default Configuration</h4>
+                <p className="text-purple-400 font-mono">127.0.0.1:9050 (Tor daemon) or :9150 (Tor Browser)</p>
+                <p className="text-xs text-zinc-500 mt-1">Configurable in Settings → Tor Network</p>
+              </div>
+              <div className="bg-zinc-800/50 rounded-lg p-4">
+                <h4 className="text-white font-mono text-sm mb-2">Connection Test</h4>
+                <p className="text-purple-400 font-mono">check.torproject.org/api/ip</p>
+                <p className="text-xs text-zinc-500 mt-1">Verifies traffic is actually routed through Tor network</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold text-white mb-6">Security Considerations</h2>
+          <div className="space-y-4">
+            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+              <h4 className="text-green-200 font-medium mb-2">✓ What Tor Protects</h4>
+              <ul className="text-sm text-green-200/70 space-y-1">
+                <li>• Your IP address from blockchain API providers</li>
+                <li>• Your ISP from seeing which addresses you query</li>
+                <li>• Geographic location from transaction broadcasts</li>
+              </ul>
+            </div>
+            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+              <h4 className="text-yellow-200 font-medium mb-2">⚠ What Tor Does NOT Protect</h4>
+              <ul className="text-sm text-yellow-200/70 space-y-1">
+                <li>• On-chain analysis linking your addresses together</li>
+                <li>• Timing correlation if querying addresses in sequence</li>
+                <li>• Metadata if you reuse addresses across sessions</li>
+              </ul>
+            </div>
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+              <h4 className="text-red-200 font-medium mb-2">✗ Tor Exit Node Risks</h4>
+              <ul className="text-sm text-red-200/70 space-y-1">
+                <li>• Exit nodes can see unencrypted traffic (HTTPS mitigates this)</li>
+                <li>• Malicious exit nodes could manipulate responses</li>
+                <li>• Always verify critical data (addresses, amounts) on hardware wallet</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold text-white mb-6">Best Practices</h2>
+          <div className="space-y-3">
+            <div className="flex items-start gap-3"><CheckCircle size={20} className="text-green-500 mt-0.5" /><span className="text-zinc-300">Run your own Tor relay for better anonymity set</span></div>
+            <div className="flex items-start gap-3"><CheckCircle size={20} className="text-green-500 mt-0.5" /><span className="text-zinc-300">Use different circuits for different vaults (restart Tor between)</span></div>
+            <div className="flex items-start gap-3"><CheckCircle size={20} className="text-green-500 mt-0.5" /><span className="text-zinc-300">Consider running your own Electrum server over Tor</span></div>
+            <div className="flex items-start gap-3"><CheckCircle size={20} className="text-green-500 mt-0.5" /><span className="text-zinc-300">Always verify transaction details on hardware wallet display</span></div>
           </div>
         </section>
 

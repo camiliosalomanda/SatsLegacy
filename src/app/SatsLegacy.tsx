@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useVaults } from '../contexts/VaultContext';
 import { useUI } from '../contexts/UIContext';
 
@@ -44,6 +44,19 @@ export function SatsLegacy() {
     activeModal
   } = useUI();
 
+  // Track if we just created a vault to trigger password modal
+  // NOTE: All hooks must be called before any conditional returns
+  const justCreatedVault = useRef(false);
+
+  // Watch for pendingVaultData changes to open password modal
+  useEffect(() => {
+    if (pendingVaultData && justCreatedVault.current) {
+      justCreatedVault.current = false;
+      openModal({ type: 'password', mode: 'create' });
+    }
+  }, [pendingVaultData, openModal]);
+
+  // Early return for loading state (after all hooks)
   if (isLoading) {
     return <LoadingScreen />;
   }
@@ -70,13 +83,9 @@ export function SatsLegacy() {
   };
 
   const handleCreateVault = (config: unknown, name: string, description: string) => {
+    justCreatedVault.current = true;
     createVault(config, name, description);
     setShowCreateWizard(false);
-
-    // If we have pending vault data (Electron mode), show password modal
-    if (pendingVaultData) {
-      openModal({ type: 'password', mode: 'create' });
-    }
   };
 
   const handlePasswordSubmit = async (password: string) => {
