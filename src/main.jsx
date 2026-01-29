@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
-import SatsLegacy from '../SatsLegacy.jsx'
+import SatsLegacy from '../SatsLegacyRefactored.jsx'
 import LandingPage from './LandingPage.jsx'
 import DocsPage from './docs/DocsPage.jsx'
 import SovereigntyProblemPage from './docs/SovereigntyProblemPage.jsx'
