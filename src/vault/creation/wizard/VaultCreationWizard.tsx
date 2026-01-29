@@ -866,6 +866,12 @@ const ReviewStep: React.FC<{
       <div className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-lg">
         <h4 className="text-sm font-medium text-orange-400 mb-3">What This Means</h4>
         <ul className="space-y-2 text-sm text-orange-300/80">
+          {config.primaryLogic === 'timelock' && (
+            <li>• You can spend anytime with your key; heirs can only spend after the timelock expires</li>
+          )}
+          {config.infrastructure.includes('local') && config.infrastructure.length === 1 && (
+            <li>• Vault is stored locally on this device - make sure to back up your vault file</li>
+          )}
           {config.infrastructure.includes('nostr') && (
             <li>• Your vault config survives on Nostr relays (you hold decryption key)</li>
           )}

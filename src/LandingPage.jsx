@@ -15,6 +15,7 @@ const LandingPage = ({ onEnterApp }) => {
   const [showAllFeatures, setShowAllFeatures] = useState(false);
 
   const DOWNLOAD_URL_WINDOWS = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.3.0/SatsLegacy.Setup.1.0.0.exe';
+  const DOWNLOAD_URL_WINDOWS_PORTABLE = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.3.0/SatsLegacy.1.0.0.exe';
   const DOWNLOAD_URL_MAC = '#'; // Coming soon
   const DOWNLOAD_URL_LINUX = '#'; // Coming soon
 
@@ -326,18 +327,27 @@ const LandingPage = ({ onEnterApp }) => {
 
         <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto">
           {/* Windows */}
-          <a
-            href={DOWNLOAD_URL_WINDOWS}
-            className="p-6 bg-zinc-800/50 border border-zinc-700 rounded-xl hover:border-orange-500/50 transition-colors text-center group"
-          >
-            <Monitor size={48} className="mx-auto mb-4 text-zinc-400 group-hover:text-orange-400 transition-colors" />
+          <div className="p-6 bg-zinc-800/50 border border-zinc-700 rounded-xl text-center">
+            <Monitor size={48} className="mx-auto mb-4 text-orange-400" />
             <h3 className="font-semibold text-white mb-1">Windows</h3>
             <p className="text-sm text-zinc-500 mb-4">Windows 10/11</p>
-            <span className="inline-flex items-center gap-2 text-orange-400 text-sm">
-              <Download size={16} />
-              Download .exe
-            </span>
-          </a>
+            <div className="space-y-2">
+              <a
+                href={DOWNLOAD_URL_WINDOWS}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-black font-medium rounded-lg transition-colors text-sm"
+              >
+                <Download size={16} />
+                Installer (.exe)
+              </a>
+              <a
+                href={DOWNLOAD_URL_WINDOWS_PORTABLE}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg transition-colors text-sm"
+              >
+                <Download size={16} />
+                Portable (.exe)
+              </a>
+            </div>
+          </div>
 
           {/* Mac */}
           <div className="p-6 bg-zinc-800/30 border border-zinc-800 rounded-xl text-center opacity-60">

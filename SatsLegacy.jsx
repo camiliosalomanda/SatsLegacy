@@ -113,6 +113,7 @@ const SatsLegacy = () => {
     theme: 'dark'
   });
   const [licenseInfo, setLicenseInfo] = useState({ licensed: false, tier: 'free' });
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [simulatorData, setSimulatorData] = useState({
     btcAmount: 1,
@@ -294,7 +295,6 @@ const SatsLegacy = () => {
       scriptType: config.primaryLogic,
       lockDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
       beneficiaries: [],
-      status: 'active',
       status: 'pending', // pending until owner key added
       ownerPubkey: '', // Owner's xpub from hardware wallet
       address: '', // Will be generated when keys are configured
@@ -398,7 +398,9 @@ const SatsLegacy = () => {
     ));
     setSelectedVault(updatedVault);
     setShowAddBeneficiary(false);
+    setHasUnsavedChanges(true);
   };
+
 
   // Remove beneficiary from vault
   const handleRemoveBeneficiary = (index) => {
@@ -410,10 +412,11 @@ const SatsLegacy = () => {
       beneficiaries: updatedBeneficiaries
     };
     
-    setVaults(prev => prev.map(v => 
+    setVaults(prev => prev.map(v =>
       (v.id === selectedVault.id || v.vault_id === selectedVault.vault_id) ? updatedVault : v
     ));
     setSelectedVault(updatedVault);
+    setHasUnsavedChanges(true);
   };
 
   // Add owner public key to vault
@@ -431,10 +434,36 @@ const SatsLegacy = () => {
     ));
     setSelectedVault(updatedVault);
     setShowOwnerKeyModal(false);
+    setHasUnsavedChanges(true);
+
+  };
+
+
+  // Save vault changes to Electron storage
+  const handleSaveVaultChanges = async (password) => {
+    if (!selectedVault || !isElectron || !electronAPI) return;
+    
+    try {
+      const result = await electronAPI.vault.update(
+        selectedVault.vault_id || selectedVault.id,
+        selectedVault,
+        password
+      );
+      
+      if (result.success) {
+        setHasUnsavedChanges(false);
+        alert('Vault saved successfully');
+      } else {
+        alert('Failed to save: ' + result.error);
+      }
+    } catch (e) {
+      console.error('Save error:', e);
+      alert('Failed to save vault changes');
+    }
   };
 
   // Generate Legal Documents
-  const generateLegalDocs = (state) => {
+  const generateLegalDocuments = (state) => {
     const docs = [
       {
         title: 'Bitcoin-Specific Will Addendum',
@@ -1120,9 +1149,9 @@ Declarant Signature`
             <div className="bg-zinc-800/50 rounded-lg p-4 text-sm">
               <p className="text-orange-400 font-medium mb-2">How to get your xpub:</p>
               <ul className="text-zinc-400 space-y-1">
-                <li>• Coldcard: Settings ? Multisig Wallets ? Export XPUB</li>
-                <li>• Trezor: Use Trezor Suite ? Account ? Show xpub</li>
-                <li>• Ledger: Use Ledger Live ? Account ? Advanced</li>
+                <li>ï¿½ Coldcard: Settings ? Multisig Wallets ? Export XPUB</li>
+                <li>ï¿½ Trezor: Use Trezor Suite ? Account ? Show xpub</li>
+                <li>ï¿½ Ledger: Use Ledger Live ? Account ? Advanced</li>
               </ul>
             </div>
 
@@ -1291,7 +1320,10 @@ Declarant Signature`
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-zinc-900/60 backdrop-blur border border-zinc-800 rounded-2xl p-6">
+          <div
+            onClick={() => { setCurrentView('vaults'); setSelectedVault(null); }}
+            className="bg-zinc-900/60 backdrop-blur border border-zinc-800 rounded-2xl p-6 cursor-pointer hover:border-orange-500/50 hover:bg-zinc-900/80 transition-all"
+          >
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
                 <Wallet size={20} className="text-orange-400" />
@@ -1302,7 +1334,10 @@ Declarant Signature`
             <p className="text-sm text-zinc-500 mt-1">${totalUSD.toLocaleString()} USD</p>
           </div>
 
-          <div className="bg-zinc-900/60 backdrop-blur border border-zinc-800 rounded-2xl p-6">
+          <div
+            onClick={() => { setCurrentView('vaults'); setSelectedVault(null); }}
+            className="bg-zinc-900/60 backdrop-blur border border-zinc-800 rounded-2xl p-6 cursor-pointer hover:border-green-500/50 hover:bg-zinc-900/80 transition-all"
+          >
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
                 <Shield size={20} className="text-green-400" />
@@ -1313,7 +1348,10 @@ Declarant Signature`
             <p className="text-sm text-zinc-500 mt-1">{vaults.length > 0 ? 'All secure & monitored' : 'Create your first vault'}</p>
           </div>
 
-          <div className="bg-zinc-900/60 backdrop-blur border border-zinc-800 rounded-2xl p-6">
+          <div
+            onClick={() => { setCurrentView('vaults'); setSelectedVault(null); }}
+            className="bg-zinc-900/60 backdrop-blur border border-zinc-800 rounded-2xl p-6 cursor-pointer hover:border-purple-500/50 hover:bg-zinc-900/80 transition-all"
+          >
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
                 <Users size={20} className="text-purple-400" />
@@ -1424,14 +1462,36 @@ Declarant Signature`
     const daysUntil = getDaysUntilUnlock(vault);
 
     return (
+
       <div className="space-y-6">
-        <button
-          onClick={() => setSelectedVault(null)}
-          className="flex items-center gap-2 text-zinc-500 hover:text-white transition-colors"
-        >
-          <ChevronRight size={16} className="rotate-180" />
-          Back to Vaults
-        </button>
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => setSelectedVault(null)}
+            className="flex items-center gap-2 text-zinc-500 hover:text-white transition-colors"
+          >
+            <ChevronRight size={16} className="rotate-180" />
+            Back to Vaults
+          </button>
+          {hasUnsavedChanges && (
+            <button
+              onClick={() => {
+                const password = prompt("Enter vault password to save changes:");
+                if (password) handleSaveVaultChanges(password);
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-black font-medium rounded-lg hover:bg-orange-600 transition-colors"
+            >
+              <Save size={16} />
+              Save Changes
+            </button>
+          )}
+        </div>
+
+
+
+
+
+
+
 
         <div className="bg-zinc-900/60 backdrop-blur border border-zinc-800 rounded-2xl p-6">
           <div className="flex items-start justify-between mb-6">
@@ -1576,8 +1636,17 @@ Declarant Signature`
                 <div className="text-right">
                   <p className="text-lg font-bold text-orange-400">{beneficiary.percentage}%</p>
                   <p className="text-xs text-zinc-500">{(vault.balance * beneficiary.percentage / 100).toFixed(8)} BTC</p>
+                  <p className="text-xs text-zinc-500">{(vault.balance * beneficiary.percentage / 100).toFixed(8)} BTC</p>
                 </div>
+                <button 
+                  onClick={() => handleRemoveBeneficiary(i)} 
+                  className="p-2 rounded-lg hover:bg-red-500/20 transition-colors"
+                  title="Remove beneficiary"
+                >
+                  <Trash2 size={16} className="text-zinc-500 hover:text-red-400" />
+                </button>
               </div>
+
             )) : (
               <div className="text-center py-8 text-zinc-500">
                 <Users size={32} className="mx-auto mb-2 opacity-50" />
@@ -2020,6 +2089,8 @@ Declarant Signature`
 };
 
 export default SatsLegacy;
+
+
 
 
 
