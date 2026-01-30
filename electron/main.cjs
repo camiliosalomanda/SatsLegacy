@@ -18,6 +18,11 @@ const crypto = require('crypto');
 // ============================================
 
 const isDev = !app.isPackaged;
+
+// Suppress GPU cache errors on Windows
+app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
+app.commandLine.appendSwitch('disable-software-rasterizer');
+
 const APP_NAME = 'SatsLegacy';
 const APP_DATA_PATH = path.join(app.getPath('userData'), 'SatsLegacy');
 const VAULTS_PATH = path.join(APP_DATA_PATH, 'vaults');

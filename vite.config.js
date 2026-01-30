@@ -6,5 +6,10 @@ export default defineConfig({
   base: './',
   build: {
     outDir: 'dist'
+  },
+  server: {
+    watch: {
+      ignored: ['**/release/**', '**/node_modules/**']
+    }
   }
 })
