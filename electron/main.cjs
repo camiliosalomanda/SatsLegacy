@@ -45,6 +45,11 @@ function ensureDirectories() {
 let mainWindow = null;
 
 function createWindow() {
+  // Use ICO on Windows for proper taskbar/title bar icon
+  const iconPath = process.platform === 'win32'
+    ? path.join(__dirname, '../build/icons/win/icon.ico')
+    : path.join(__dirname, '../build/icons/png/256x256.png');
+
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -52,7 +57,7 @@ function createWindow() {
     minHeight: 700,
     backgroundColor: '#09090b',
     titleBarStyle: 'hiddenInset',
-    icon: path.join(__dirname, '../build/icon.png'),
+    icon: iconPath,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
