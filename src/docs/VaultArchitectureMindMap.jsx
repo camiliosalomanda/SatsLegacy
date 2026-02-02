@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, ArrowLeft } from 'lucide-react';
+import { Shield } from 'lucide-react';
 
 const VaultArchitectureMindMap = () => {
   const [hoveredNode, setHoveredNode] = useState(null);
@@ -53,15 +53,8 @@ const VaultArchitectureMindMap = () => {
             <span className="text-zinc-600">/</span>
             <a href="#/docs" className="text-zinc-400 hover:text-white transition-colors">Docs</a>
             <span className="text-zinc-600">/</span>
-            <span className="text-zinc-300">Architecture</span>
+            <span className="text-zinc-300">Core Concepts</span>
           </div>
-          <a
-            href="#/docs"
-            className="flex items-center gap-2 px-4 py-2 bg-zinc-800 text-zinc-300 rounded-lg hover:bg-zinc-700 hover:text-white transition-colors"
-          >
-            <ArrowLeft size={16} />
-            Back to Docs
-          </a>
         </div>
       </header>
 
