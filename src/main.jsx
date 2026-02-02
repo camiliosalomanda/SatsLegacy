@@ -29,6 +29,7 @@ import TorPage from './docs/TorPage.jsx'
 import EstatePlanningPage from './docs/EstatePlanningPage.jsx'
 import LegalTemplatesPage from './docs/LegalTemplatesPage.jsx'
 import HeirCommunicationPage from './docs/HeirCommunicationPage.jsx'
+import VaultArchitectureMindMap from './docs/VaultArchitectureMindMap.jsx'
 import './index.css'
 
 const isElectron = typeof window !== 'undefined' && window.isElectron;
@@ -106,6 +107,9 @@ function App() {
   if (hash === '#/docs/estate-planning') return <EstatePlanningPage />;
   if (hash === '#/docs/legal-templates') return <LegalTemplatesPage />;
   if (hash === '#/docs/heir-communication') return <HeirCommunicationPage />;
+
+  // Architecture
+  if (hash === '#/docs/vault-architecture') return <VaultArchitectureMindMap />;
 
   if (hash === '#/whitepaper') {
     window.location.href = '/SatsLegacy-Whitepaper.pdf';

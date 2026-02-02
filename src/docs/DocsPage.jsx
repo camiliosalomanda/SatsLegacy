@@ -5,10 +5,10 @@
  */
 
 import React from 'react';
-import { 
-  Shield, BookOpen, AlertTriangle, Lock, Key, Clock, Users, 
+import {
+  Shield, BookOpen, AlertTriangle, Lock, Key, Clock, Users,
   FileText, ArrowRight, ExternalLink, Github, Zap, Globe,
-  ChevronRight, Search
+  ChevronRight, Search, Network
 } from 'lucide-react';
 
 const DocsPage = ({ onNavigate }) => {
@@ -28,6 +28,7 @@ const DocsPage = ({ onNavigate }) => {
       icon: BookOpen,
       color: 'blue',
       docs: [
+        { title: 'Vault Architecture', href: '#/docs/vault-architecture', desc: 'Interactive map of all vault options', featured: true },
         { title: 'The Sovereignty Problem', href: '#/docs/sovereignty-problem', desc: 'Why custodial inheritance fails', featured: true },
         { title: 'Miniscript & Timelocks', href: '#/docs/miniscript-timelocks', desc: 'Bitcoin scripting for inheritance', featured: true },
         { title: 'Key Distribution', href: '#/docs/key-distribution', desc: 'Securely distribute keys to heirs', featured: true },
@@ -177,14 +178,12 @@ const DocsPage = ({ onNavigate }) => {
               <Github size={20} className="text-orange-400" />
               <span className="font-medium group-hover:text-orange-400 transition-colors">Source Code</span>
             </a>
-            <a 
-              href="/SatsLegacy-Whitepaper.pdf"
-              target="_blank"
-              rel="noopener noreferrer"
+            <a
+              href="#/docs/vault-architecture"
               className="flex items-center gap-3 p-4 bg-zinc-800/50 border border-zinc-700 rounded-lg hover:border-orange-500/30 transition-colors group"
             >
-              <ArrowRight size={20} className="text-orange-400" />
-              <span className="font-medium group-hover:text-orange-400 transition-colors">Download PDF</span>
+              <Network size={20} className="text-orange-400" />
+              <span className="font-medium group-hover:text-orange-400 transition-colors">Architecture Map</span>
             </a>
           </div>
         </div>
