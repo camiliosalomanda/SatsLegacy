@@ -5,6 +5,7 @@ const topics = [
   {
     category: 'Fundamentals',
     items: [
+      { title: 'Vault Architecture', desc: 'Interactive map of all vault configuration options', duration: '5 min', href: '#/docs/vault-architecture' },
       { title: 'The Sovereignty Problem', desc: 'Why custodial inheritance betrays Bitcoin principles', duration: '10 min', href: '#/docs/sovereignty-problem' },
       { title: 'Quick Start Guide', desc: 'Get up and running in 10 minutes', duration: '10 min', href: '#/docs/quick-start' },
       { title: 'Hardware Wallet Integration', desc: 'Coldcard, Trezor, Ledger and more', duration: '15 min', href: '#/docs/hardware-wallets' },
