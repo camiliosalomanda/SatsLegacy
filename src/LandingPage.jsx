@@ -14,8 +14,8 @@ import {
 const LandingPage = ({ onEnterApp }) => {
   const [showAllFeatures, setShowAllFeatures] = useState(false);
 
-  const DOWNLOAD_URL_WINDOWS = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.4.0/SatsLegacy.Setup.1.0.0.exe';
-  const DOWNLOAD_URL_WINDOWS_PORTABLE = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.4.0/SatsLegacy.1.0.0.exe';
+  const DOWNLOAD_URL_WINDOWS = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.0/SatsLegacy.Setup.1.5.0.exe';
+  const DOWNLOAD_URL_WINDOWS_PORTABLE = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.0/SatsLegacy.1.5.0.exe';
   const DOWNLOAD_URL_MAC = '#'; // Coming soon
   const DOWNLOAD_URL_LINUX = '#'; // Coming soon
 
