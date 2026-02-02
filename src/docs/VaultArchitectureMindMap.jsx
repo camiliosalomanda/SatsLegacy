@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Shield, ArrowLeft } from 'lucide-react';
 
 const VaultArchitectureMindMap = () => {
   const [hoveredNode, setHoveredNode] = useState(null);
@@ -38,16 +39,42 @@ const VaultArchitectureMindMap = () => {
   };
 
   return (
-    <div className="w-full min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 p-6">
-      {/* Header */}
-      <div className="text-center mb-8">
-        <h1 className="text-orange-500 text-2xl font-bold tracking-wider mb-2">
-          SATSLEGACY VAULT ARCHITECTURE
-        </h1>
-        <p className="text-zinc-500 text-sm">
-          Sovereign Bitcoin Inheritance Configuration
-        </p>
-      </div>
+    <div className="w-full min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950">
+      {/* Navigation Header */}
+      <header className="border-b border-zinc-800">
+        <div className="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <a href="#/" className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
+                <Shield size={24} className="text-black" />
+              </div>
+              <span className="text-xl font-bold text-white">SatsLegacy</span>
+            </a>
+            <span className="text-zinc-600">/</span>
+            <a href="#/docs" className="text-zinc-400 hover:text-white transition-colors">Docs</a>
+            <span className="text-zinc-600">/</span>
+            <span className="text-zinc-300">Architecture</span>
+          </div>
+          <a
+            href="#/docs"
+            className="flex items-center gap-2 px-4 py-2 bg-zinc-800 text-zinc-300 rounded-lg hover:bg-zinc-700 hover:text-white transition-colors"
+          >
+            <ArrowLeft size={16} />
+            Back to Docs
+          </a>
+        </div>
+      </header>
+
+      <div className="p-6">
+        {/* Title */}
+        <div className="text-center mb-8">
+          <h1 className="text-orange-500 text-2xl font-bold tracking-wider mb-2">
+            SATSLEGACY VAULT ARCHITECTURE
+          </h1>
+          <p className="text-zinc-500 text-sm">
+            Sovereign Bitcoin Inheritance Configuration
+          </p>
+        </div>
 
       {/* Preset Selector */}
       <div className="flex justify-center gap-3 mb-8 flex-wrap">
@@ -274,6 +301,7 @@ const VaultArchitectureMindMap = () => {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
