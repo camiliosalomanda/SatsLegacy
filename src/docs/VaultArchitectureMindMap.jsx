@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 
 const VaultArchitectureMindMap = () => {
   const [hoveredNode, setHoveredNode] = useState(null);
@@ -40,23 +40,15 @@ const VaultArchitectureMindMap = () => {
 
   return (
     <div className="w-full min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950">
-      {/* Navigation Header */}
-      <header className="border-b border-zinc-800">
-        <div className="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <a href="#/" className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
-                <Shield size={24} className="text-black" />
-              </div>
-              <span className="text-xl font-bold text-white">SatsLegacy</span>
-            </a>
-            <span className="text-zinc-600">/</span>
-            <a href="#/docs" className="text-zinc-400 hover:text-white transition-colors">Docs</a>
-            <span className="text-zinc-600">/</span>
-            <span className="text-zinc-300">Core Concepts</span>
-          </div>
+      {/* Header */}
+      <div className="border-b border-zinc-800 bg-zinc-900/50">
+        <div className="max-w-4xl mx-auto px-6 py-4">
+          <a href="#/docs" className="inline-flex items-center gap-2 text-zinc-400 hover:text-orange-500 transition-colors">
+            <ChevronLeft size={16} />
+            Back to Documentation
+          </a>
         </div>
-      </header>
+      </div>
 
       <div className="p-6">
         {/* Title */}
