@@ -391,29 +391,15 @@ export function SettingsModal() {
                   </div>
 
                   <div>
-                    <label className="block text-sm text-zinc-400 mb-2">Resend API Key</label>
-                    <input
-                      type="password"
-                      value={settings.notifications?.resendApiKey || ''}
-                      onChange={(e) => handleNotificationChange('resendApiKey', e.target.value)}
-                      placeholder="re_xxxxxxxxxxxxxxxxxxxxxxxx"
-                      className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white font-mono text-sm focus:outline-none focus:border-orange-500"
-                    />
-                    <p className="text-xs text-zinc-600 mt-1">
-                      Get your API key from <a href="https://resend.com" target="_blank" rel="noopener" className="text-orange-400 hover:underline">resend.com</a>
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm text-zinc-400 mb-2">From Email</label>
+                    <label className="block text-sm text-zinc-400 mb-2">From Email (optional)</label>
                     <input
                       type="email"
                       value={settings.notifications?.fromEmail || ''}
                       onChange={(e) => handleNotificationChange('fromEmail', e.target.value)}
-                      placeholder="notifications@yourdomain.com"
+                      placeholder="notifications@satslegacy.io"
                       className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white text-sm focus:outline-none focus:border-orange-500"
                     />
-                    <p className="text-xs text-zinc-600 mt-1">Must be verified in your Resend account</p>
+                    <p className="text-xs text-zinc-600 mt-1">Defaults to notifications@satslegacy.io</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -445,7 +431,7 @@ export function SettingsModal() {
                     <div>
                       <button
                         onClick={handleTestEmail}
-                        disabled={testingEmail || !settings.notifications?.resendApiKey}
+                        disabled={testingEmail || !settings.notifications?.ownerEmail}
                         className="w-full py-2 bg-zinc-800 text-zinc-300 rounded-lg hover:bg-zinc-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
                         {testingEmail ? (

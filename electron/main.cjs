@@ -29,6 +29,108 @@ const VAULTS_PATH = path.join(APP_DATA_PATH, 'vaults');
 const LICENSE_PATH = path.join(APP_DATA_PATH, 'license.json');
 const SETTINGS_PATH = path.join(APP_DATA_PATH, 'settings.json');
 
+// ============================================
+// SECURITY UTILITIES
+// ============================================
+
+/**
+ * Validate vault ID format (UUID only)
+ * Prevents path traversal attacks
+ */
+function isValidVaultId(vaultId) {
+  if (!vaultId || typeof vaultId !== 'string') return false;
+  // UUID v4 format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(vaultId);
+}
+
+/**
+ * Safely resolve vault path, ensuring it stays within VAULTS_PATH
+ * Returns null if path traversal detected
+ */
+function safeVaultPath(vaultId, extension = '.vault') {
+  if (!isValidVaultId(vaultId)) return null;
+  const safePath = path.join(VAULTS_PATH, `${vaultId}${extension}`);
+  // Verify the resolved path is still within VAULTS_PATH
+  if (!safePath.startsWith(VAULTS_PATH)) return null;
+  return safePath;
+}
+
+/**
+ * Validate URL for external opening
+ * Only allow safe protocols
+ */
+const ALLOWED_EXTERNAL_PROTOCOLS = ['https:', 'http:', 'mailto:', 'bitcoin:'];
+
+function isValidExternalUrl(urlString) {
+  try {
+    const url = new URL(urlString);
+    return ALLOWED_EXTERNAL_PROTOCOLS.includes(url.protocol);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Validate URL for Tor fetch - prevent SSRF
+ */
+const BLOCKED_PROTOCOLS = ['file:', 'ftp:', 'gopher:', 'ldap:', 'jar:', 'data:', 'javascript:'];
+const PRIVATE_IP_PATTERNS = [
+  /^127\./,           // Loopback
+  /^10\./,            // Private Class A
+  /^172\.(1[6-9]|2[0-9]|3[01])\./, // Private Class B
+  /^192\.168\./,      // Private Class C
+  /^169\.254\./,      // Link-local
+  /^0\./,             // Current network
+  /^::1$/,            // IPv6 loopback
+  /^fe80:/i,          // IPv6 link-local
+  /^fc[0-9a-f]{2}:/i, // IPv6 unique local
+  /^fd[0-9a-f]{2}:/i, // IPv6 unique local
+  /^localhost$/i      // Localhost hostname
+];
+
+function isValidTorUrl(urlString) {
+  try {
+    const url = new URL(urlString);
+
+    // Check protocol
+    if (BLOCKED_PROTOCOLS.includes(url.protocol)) {
+      return { valid: false, reason: 'Blocked protocol' };
+    }
+
+    // Only allow http/https
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      return { valid: false, reason: 'Only HTTP/HTTPS allowed' };
+    }
+
+    // Check for private/internal IPs
+    const hostname = url.hostname;
+    for (const pattern of PRIVATE_IP_PATTERNS) {
+      if (pattern.test(hostname)) {
+        return { valid: false, reason: 'Private/internal addresses not allowed' };
+      }
+    }
+
+    return { valid: true };
+  } catch {
+    return { valid: false, reason: 'Invalid URL format' };
+  }
+}
+
+/**
+ * Escape HTML to prevent XSS in email templates
+ */
+function escapeHtml(text) {
+  if (!text) return '';
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  };
+  return String(text).replace(/[&<>"']/g, m => map[m]);
+}
+
 // Ensure directories exist
 function ensureDirectories() {
   [APP_DATA_PATH, VAULTS_PATH].forEach(dir => {
@@ -61,6 +163,8 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: true,
+      enableRemoteModule: false,
       preload: path.join(__dirname, 'preload.cjs')
     }
   });
@@ -68,9 +172,16 @@ function createWindow() {
   // Load app
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173');
-    mainWindow.webContents.openDevTools();
+    // Only open DevTools if explicitly requested via environment variable
+    if (process.env.OPEN_DEV_TOOLS === '1') {
+      mainWindow.webContents.openDevTools();
+    }
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    // Disable DevTools in production builds entirely
+    mainWindow.webContents.on('devtools-opened', () => {
+      mainWindow.webContents.closeDevTools();
+    });
   }
 
   mainWindow.on('closed', () => {
@@ -170,28 +281,32 @@ ipcMain.handle('vault:list', async () => {
 
 ipcMain.handle('vault:create', async (event, { vault, password }) => {
   try {
+    // Generate new UUID or validate provided one
     const vaultId = vault.vault_id || crypto.randomUUID();
-    const vaultPath = path.join(VAULTS_PATH, `${vaultId}.vault`);
-    const metaPath = path.join(VAULTS_PATH, `${vaultId}.meta`);
+
+    // Validate vaultId to prevent path traversal
+    const vaultPath = safeVaultPath(vaultId, '.vault');
+    const metaPath = safeVaultPath(vaultId, '.meta');
+    if (!vaultPath || !metaPath) {
+      return { success: false, error: 'Invalid vault ID format' };
+    }
     
     // Encrypt vault data
     const encrypted = encrypt(vault, password);
     fs.writeFileSync(vaultPath, JSON.stringify(encrypted, null, 2));
     
-    // Save unencrypted metadata for listing
+    // Save minimal unencrypted metadata for listing (no sensitive data)
     const meta = {
       vault_id: vaultId,
       name: vault.name,
       description: vault.description,
       created_at: vault.created_at || new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      infrastructure: vault.infrastructure,
       logic: vault.logic,
-      beneficiaries: vault.beneficiaries || [],
-      address: vault.address,
-      ownerPubkey: vault.ownerPubkey,
-      lockDate: vault.lockDate,
-      inactivityTrigger: vault.inactivityTrigger
+      status: vault.status || 'pending',
+      beneficiaryCount: (vault.beneficiaries || []).length,
+      hasOwnerKey: !!vault.ownerPubkey,
+      hasAddress: !!vault.address
     };
     fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2));
 
@@ -203,15 +318,19 @@ ipcMain.handle('vault:create', async (event, { vault, password }) => {
 
 ipcMain.handle('vault:load', async (event, { vaultId, password }) => {
   try {
-    const vaultPath = path.join(VAULTS_PATH, `${vaultId}.vault`);
-    
+    // Validate vaultId to prevent path traversal
+    const vaultPath = safeVaultPath(vaultId, '.vault');
+    if (!vaultPath) {
+      return { success: false, error: 'Invalid vault ID format' };
+    }
+
     if (!fs.existsSync(vaultPath)) {
       return { success: false, error: 'Vault not found' };
     }
-    
+
     const encrypted = JSON.parse(fs.readFileSync(vaultPath, 'utf8'));
     const vault = decrypt(encrypted, password);
-    
+
     return { success: true, vault };
   } catch (error) {
     return { success: false, error: 'Invalid password or corrupted vault' };
@@ -220,27 +339,29 @@ ipcMain.handle('vault:load', async (event, { vaultId, password }) => {
 
 ipcMain.handle('vault:update', async (event, { vaultId, vault, password }) => {
   try {
-    const vaultPath = path.join(VAULTS_PATH, `${vaultId}.vault`);
-    const metaPath = path.join(VAULTS_PATH, `${vaultId}.meta`);
+    // Validate vaultId to prevent path traversal
+    const vaultPath = safeVaultPath(vaultId, '.vault');
+    const metaPath = safeVaultPath(vaultId, '.meta');
+    if (!vaultPath || !metaPath) {
+      return { success: false, error: 'Invalid vault ID format' };
+    }
     
     // Encrypt and save
     const encrypted = encrypt(vault, password);
     fs.writeFileSync(vaultPath, JSON.stringify(encrypted, null, 2));
     
-    // Update metadata
+    // Update minimal metadata (no sensitive data)
     const meta = {
       vault_id: vaultId,
       name: vault.name,
       description: vault.description,
       created_at: vault.created_at,
       updated_at: new Date().toISOString(),
-      infrastructure: vault.infrastructure,
       logic: vault.logic,
-      beneficiaries: vault.beneficiaries || [],
-      address: vault.address,
-      ownerPubkey: vault.ownerPubkey,
-      lockDate: vault.lockDate,
-      inactivityTrigger: vault.inactivityTrigger
+      status: vault.status || 'pending',
+      beneficiaryCount: (vault.beneficiaries || []).length,
+      hasOwnerKey: !!vault.ownerPubkey,
+      hasAddress: !!vault.address
     };
     fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2));
 
@@ -252,12 +373,16 @@ ipcMain.handle('vault:update', async (event, { vaultId, vault, password }) => {
 
 ipcMain.handle('vault:delete', async (event, { vaultId }) => {
   try {
-    const vaultPath = path.join(VAULTS_PATH, `${vaultId}.vault`);
-    const metaPath = path.join(VAULTS_PATH, `${vaultId}.meta`);
-    
+    // Validate vaultId to prevent path traversal
+    const vaultPath = safeVaultPath(vaultId, '.vault');
+    const metaPath = safeVaultPath(vaultId, '.meta');
+    if (!vaultPath || !metaPath) {
+      return { success: false, error: 'Invalid vault ID format' };
+    }
+
     if (fs.existsSync(vaultPath)) fs.unlinkSync(vaultPath);
     if (fs.existsSync(metaPath)) fs.unlinkSync(metaPath);
-    
+
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
@@ -266,7 +391,12 @@ ipcMain.handle('vault:delete', async (event, { vaultId }) => {
 
 ipcMain.handle('vault:export', async (event, { vaultId, password }) => {
   try {
-    const vaultPath = path.join(VAULTS_PATH, `${vaultId}.vault`);
+    // Validate vaultId to prevent path traversal
+    const vaultPath = safeVaultPath(vaultId, '.vault');
+    if (!vaultPath) {
+      return { success: false, error: 'Invalid vault ID format' };
+    }
+
     const encrypted = JSON.parse(fs.readFileSync(vaultPath, 'utf8'));
     
     // Verify password first
@@ -692,19 +822,11 @@ ipcMain.handle('duress:sendSilentAlert', async () => {
       return { success: false, error: 'Silent alert not configured' };
     }
 
-    // Send email alert using Resend
-    const apiKey = settings.notifications?.resendApiKey;
-    if (!apiKey) {
-      return { success: false, error: 'Email not configured' };
-    }
+    // Send email alert via API gateway
+    const fromEmail = settings.notifications?.fromEmail || 'alerts@satslegacy.io';
 
-    const resend = await getResendClient(apiKey);
-    if (!resend) {
-      return { success: false, error: 'Failed to initialize email' };
-    }
-
-    await resend.emails.send({
-      from: settings.notifications?.fromEmail || 'alerts@satslegacy.com',
+    const result = await sendEmailViaProxy({
+      from: `SatsLegacy Alerts <${fromEmail}>`,
       to: settings.duress.alertEmail,
       subject: 'Security Alert',
       html: `
@@ -713,10 +835,11 @@ ipcMain.handle('duress:sendSilentAlert', async () => {
         <p>Time: ${new Date().toISOString()}</p>
         <p>If this was you in a test, no action is needed.</p>
         <p>If this was unexpected, your security may be compromised.</p>
-      `
+      `,
+      text: `Duress Alert Triggered\n\nA duress password was entered on your SatsLegacy application.\nTime: ${new Date().toISOString()}\nIf this was you in a test, no action is needed.\nIf this was unexpected, your security may be compromised.`
     });
 
-    return { success: true };
+    return result;
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -750,6 +873,12 @@ async function createTorAgent(host, port) {
  */
 ipcMain.handle('tor:fetch', async (event, { url, options = {} }) => {
   try {
+    // Validate URL to prevent SSRF attacks
+    const urlValidation = isValidTorUrl(url);
+    if (!urlValidation.valid) {
+      return { success: false, error: `Invalid URL: ${urlValidation.reason}` };
+    }
+
     // Load settings to get Tor config
     let settings = DEFAULT_SETTINGS;
     if (fs.existsSync(SETTINGS_PATH)) {
@@ -788,6 +917,17 @@ ipcMain.handle('tor:fetch', async (event, { url, options = {} }) => {
       const parsedUrl = new URL(url);
       const protocol = parsedUrl.protocol === 'https:' ? https : http;
 
+      // Sanitize headers - remove dangerous ones that could be injected
+      const BLOCKED_HEADERS = ['host', 'authorization', 'cookie', 'proxy-authorization', 'x-forwarded-for', 'x-real-ip'];
+      const safeHeaders = {};
+      if (options.headers) {
+        for (const [key, value] of Object.entries(options.headers)) {
+          if (!BLOCKED_HEADERS.includes(key.toLowerCase())) {
+            safeHeaders[key] = value;
+          }
+        }
+      }
+
       const reqOptions = {
         hostname: parsedUrl.hostname,
         port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
@@ -797,7 +937,7 @@ ipcMain.handle('tor:fetch', async (event, { url, options = {} }) => {
         headers: {
           'User-Agent': 'SatsLegacy/1.0',
           'Host': parsedUrl.hostname,
-          ...(options.headers || {})
+          ...safeHeaders
         },
         timeout: 30000
       };
@@ -973,6 +1113,11 @@ ipcMain.handle('tor:getStatus', async () => {
 // ============================================
 
 ipcMain.handle('system:openExternal', async (event, { url }) => {
+  // Validate URL to prevent command injection via malicious protocols
+  if (!isValidExternalUrl(url)) {
+    return { success: false, error: 'Invalid or blocked URL protocol. Only https, http, mailto, and bitcoin URLs allowed.' };
+  }
+
   shell.openExternal(url);
   return { success: true };
 });
@@ -986,44 +1131,48 @@ ipcMain.handle('system:getAppInfo', async () => {
 });
 
 // ============================================
-// NOTIFICATIONS (Resend Email)
+// NOTIFICATIONS (Email via API Gateway)
 // ============================================
 
-let resendClient = null;
+// Email is sent via centralized API gateway to keep API keys secure
+// The gateway validates the app secret and proxies to Resend
+const EMAIL_API_GATEWAY = 'https://vercel-api-gateway-gules.vercel.app/api/resend';
+const EMAIL_APP_SECRET = '22b0d350f5b480d1dd44b957c846a51c5cb4b4db2a32a3006d36f5620a58b554';
 
-async function getResendClient(apiKey) {
-  if (!apiKey) return null;
+async function sendEmailViaProxy({ from, to, subject, html, text }) {
   try {
-    // Dynamic import for ESM module
-    const { Resend } = await import('resend');
-    return new Resend(apiKey);
+    const response = await fetch(EMAIL_API_GATEWAY, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-app-secret': EMAIL_APP_SECRET
+      },
+      body: JSON.stringify({ from, to, subject, html, text })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('Email API error:', data);
+      return { success: false, error: data.error || 'Email sending failed' };
+    }
+
+    return { success: true, messageId: data.messageId };
   } catch (error) {
-    console.error('Failed to initialize Resend:', error.message);
-    return null;
+    console.error('Email proxy error:', error.message);
+    return { success: false, error: error.message };
   }
 }
 
 ipcMain.handle('notifications:sendCheckInReminder', async (event, { toEmail, vaultName, daysRemaining, status }) => {
   try {
-    // Load settings to get API key
+    // Load settings for from email
     let settings = DEFAULT_SETTINGS;
     if (fs.existsSync(SETTINGS_PATH)) {
       settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8'));
     }
 
-    const apiKey = settings.notifications?.resendApiKey;
-    const fromEmail = settings.notifications?.fromEmail || 'notifications@satslegacy.com';
-
-    if (!apiKey) {
-      return { success: false, error: 'Resend API key not configured' };
-    }
-
-    const client = await getResendClient(apiKey);
-    if (!client) {
-      return { success: false, error: 'Failed to initialize email client' };
-    }
-
-    const urgencyText = status === 'critical' ? 'URGENT' : status === 'expired' ? 'Expired' : 'Reminder';
+    const fromEmail = settings.notifications?.fromEmail || 'notifications@satslegacy.io';
     const urgencyColor = status === 'critical' ? '#ef4444' : status === 'expired' ? '#dc2626' : '#eab308';
 
     const subject = status === 'expired'
@@ -1032,19 +1181,13 @@ ipcMain.handle('notifications:sendCheckInReminder', async (event, { toEmail, vau
       ? `🚨 URGENT: Check-In Required for "${vaultName}" (${daysRemaining} days)`
       : `⏰ SatsLegacy: Check-In Reminder for "${vaultName}" (${daysRemaining} days)`;
 
-    const result = await client.emails.send({
+    return await sendEmailViaProxy({
       from: `SatsLegacy <${fromEmail}>`,
       to: toEmail,
       subject,
       html: generateCheckInHtml(vaultName, daysRemaining, status, urgencyColor),
       text: generateCheckInText(vaultName, daysRemaining, status)
     });
-
-    if (result.error) {
-      return { success: false, error: result.error.message };
-    }
-
-    return { success: true, messageId: result.data?.id };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -1057,31 +1200,15 @@ ipcMain.handle('notifications:sendHeirNotification', async (event, { toEmail, va
       settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8'));
     }
 
-    const apiKey = settings.notifications?.resendApiKey;
-    const fromEmail = settings.notifications?.fromEmail || 'notifications@satslegacy.com';
+    const fromEmail = settings.notifications?.fromEmail || 'notifications@satslegacy.io';
 
-    if (!apiKey) {
-      return { success: false, error: 'Resend API key not configured' };
-    }
-
-    const client = await getResendClient(apiKey);
-    if (!client) {
-      return { success: false, error: 'Failed to initialize email client' };
-    }
-
-    const result = await client.emails.send({
+    return await sendEmailViaProxy({
       from: `SatsLegacy <${fromEmail}>`,
       to: toEmail,
       subject: `SatsLegacy: Vault "${vaultName}" is Now Claimable`,
       html: generateHeirHtml(vaultName, ownerName),
       text: generateHeirText(vaultName, ownerName)
     });
-
-    if (result.error) {
-      return { success: false, error: result.error.message };
-    }
-
-    return { success: true, messageId: result.data?.id };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -1094,19 +1221,9 @@ ipcMain.handle('notifications:testEmail', async (event, { toEmail }) => {
       settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8'));
     }
 
-    const apiKey = settings.notifications?.resendApiKey;
-    const fromEmail = settings.notifications?.fromEmail || 'notifications@satslegacy.com';
+    const fromEmail = settings.notifications?.fromEmail || 'notifications@satslegacy.io';
 
-    if (!apiKey) {
-      return { success: false, error: 'Resend API key not configured' };
-    }
-
-    const client = await getResendClient(apiKey);
-    if (!client) {
-      return { success: false, error: 'Failed to initialize email client' };
-    }
-
-    const result = await client.emails.send({
+    return await sendEmailViaProxy({
       from: `SatsLegacy <${fromEmail}>`,
       to: toEmail,
       subject: 'SatsLegacy: Test Notification',
@@ -1119,12 +1236,6 @@ ipcMain.handle('notifications:testEmail', async (event, { toEmail }) => {
       `,
       text: 'SatsLegacy Test Email\n\nThis is a test notification from SatsLegacy.\nIf you received this email, your notification settings are configured correctly.'
     });
-
-    if (result.error) {
-      return { success: false, error: result.error.message };
-    }
-
-    return { success: true, messageId: result.data?.id };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -1133,6 +1244,7 @@ ipcMain.handle('notifications:testEmail', async (event, { toEmail }) => {
 // Email template helpers
 function generateCheckInHtml(vaultName, daysRemaining, status, urgencyColor) {
   const urgencyText = status === 'critical' ? 'Urgent' : status === 'expired' ? 'Expired' : 'Reminder';
+  const safeVaultName = escapeHtml(vaultName);
   return `
 <!DOCTYPE html>
 <html>
@@ -1147,7 +1259,7 @@ function generateCheckInHtml(vaultName, daysRemaining, status, urgencyColor) {
         </span>
         <h2 style="margin: 20px 0; color: #ffffff;">Check-In Required</h2>
         <p style="color: #a1a1aa; line-height: 1.6;">
-          Your vault <strong style="color: #ffffff;">"${vaultName}"</strong> requires a check-in to maintain control.
+          Your vault <strong style="color: #ffffff;">"${safeVaultName}"</strong> requires a check-in to maintain control.
         </p>
         <div style="padding: 20px; background-color: ${urgencyColor}10; border: 1px solid ${urgencyColor}30; border-radius: 12px; margin: 20px 0;">
           ${status === 'expired'
@@ -1182,6 +1294,8 @@ function generateCheckInText(vaultName, daysRemaining, status) {
 }
 
 function generateHeirHtml(vaultName, ownerName) {
+  const safeVaultName = escapeHtml(vaultName);
+  const safeOwnerName = escapeHtml(ownerName);
   return `
 <!DOCTYPE html>
 <html>
@@ -1193,7 +1307,7 @@ function generateHeirHtml(vaultName, ownerName) {
         <h1 style="margin: 0 0 20px 0; font-size: 24px; color: #f97316;">SatsLegacy</h1>
         <h2 style="margin: 0 0 20px 0; color: #ffffff;">Vault Now Claimable</h2>
         <p style="color: #a1a1aa; line-height: 1.6;">
-          You have been designated as a beneficiary of the vault <strong style="color: #ffffff;">"${vaultName}"</strong>${ownerName ? ` by ${ownerName}` : ''}.
+          You have been designated as a beneficiary of the vault <strong style="color: #ffffff;">"${safeVaultName}"</strong>${safeOwnerName ? ` by ${safeOwnerName}` : ''}.
         </p>
         <p style="color: #a1a1aa; line-height: 1.6;">
           The vault's inactivity period has expired, and you may now be eligible to claim your designated portion of the funds.
@@ -1301,7 +1415,7 @@ async function checkVaultsAndNotify() {
     }
 
     // Check if notifications are enabled
-    if (!settings.notifications?.enabled || !settings.notifications?.resendApiKey || !settings.notifications?.ownerEmail) {
+    if (!settings.notifications?.enabled || !settings.notifications?.ownerEmail) {
       return;
     }
 
@@ -1346,10 +1460,7 @@ async function checkVaultsAndNotify() {
       // Send notification
       console.log(`Sending ${status} notification for vault "${meta.name}"`);
 
-      const client = await getResendClient(settings.notifications.resendApiKey);
-      if (!client) continue;
-
-      const fromEmail = settings.notifications.fromEmail || 'notifications@satslegacy.com';
+      const fromEmail = settings.notifications.fromEmail || 'notifications@satslegacy.io';
       const urgencyColor = status === 'critical' ? '#ef4444' : status === 'expired' ? '#dc2626' : '#eab308';
 
       const subject = status === 'expired'
@@ -1359,13 +1470,18 @@ async function checkVaultsAndNotify() {
         : `⏰ SatsLegacy: Check-In Reminder for "${meta.name}" (${daysRemaining} days)`;
 
       try {
-        await client.emails.send({
+        const result = await sendEmailViaProxy({
           from: `SatsLegacy <${fromEmail}>`,
           to: settings.notifications.ownerEmail,
           subject,
           html: generateCheckInHtml(meta.name, daysRemaining, status, urgencyColor),
           text: generateCheckInText(meta.name, daysRemaining, status)
         });
+
+        if (!result.success) {
+          console.error(`Failed to send notification for vault "${meta.name}":`, result.error);
+          continue;
+        }
 
         // Update cooldown
         cooldown[cooldownKey] = now;
