@@ -1,65 +1,181 @@
 import React from 'react';
-import { BookOpen } from 'lucide-react';
+import {
+  BookOpen, Zap, Lock, Shield, Globe, FileText,
+  ChevronRight, Search, Github, Network
+} from 'lucide-react';
 
-const topics = [
+const categories = [
   {
-    category: 'Fundamentals',
-    items: [
-      { title: 'Vault Architecture', desc: 'Interactive map of all vault configuration options', duration: '5 min', href: '#/docs/vault-architecture' },
-      { title: 'The Sovereignty Problem', desc: 'Why custodial inheritance betrays Bitcoin principles', duration: '10 min', href: '#/docs/sovereignty-problem' },
-      { title: 'Quick Start Guide', desc: 'Get up and running in 10 minutes', duration: '10 min', href: '#/docs/quick-start' },
-      { title: 'Hardware Wallet Integration', desc: 'Coldcard, Trezor, Ledger and more', duration: '15 min', href: '#/docs/hardware-wallets' },
+    title: 'Getting Started',
+    icon: Zap,
+    color: 'orange',
+    docs: [
+      { title: 'Quick Start Guide', href: '#/docs/quick-start', desc: 'Get up and running in 10 minutes' },
+      { title: 'Installation', href: '#/docs/installation', desc: 'Download and install SatsLegacy' },
+      { title: 'Your First Vault', href: '#/docs/first-vault', desc: 'Create your first inheritance vault' },
     ]
   },
   {
-    category: 'Technical',
-    items: [
-      { title: 'Timelock Vaults', desc: 'How Bitcoin scripts enforce time-based conditions', duration: '12 min', href: '#/docs/vault-timelock' },
-      { title: 'Multisig Inheritance', desc: 'Distribute trust across multiple keys', duration: '15 min', href: '#/docs/vault-multisig' },
-      { title: 'Miniscript & Timelocks', desc: 'Advanced scripting for complex inheritance', duration: '20 min', href: '#/docs/miniscript-timelocks' },
+    title: 'Core Concepts',
+    icon: BookOpen,
+    color: 'blue',
+    docs: [
+      { title: 'Vault Architecture', href: '#/docs/vault-architecture', desc: 'Interactive map of all vault options', featured: true },
+      { title: 'The Sovereignty Problem', href: '#/docs/sovereignty-problem', desc: 'Why custodial inheritance fails', featured: true },
+      { title: 'Miniscript & Timelocks', href: '#/docs/miniscript-timelocks', desc: 'Bitcoin scripting for inheritance', featured: true },
+      { title: 'Key Distribution', href: '#/docs/key-distribution', desc: 'Securely distribute keys to heirs', featured: true },
     ]
   },
   {
-    category: 'Security & Privacy',
-    items: [
-      { title: 'Threat Model', desc: 'Understanding attack vectors and mitigations', duration: '12 min', href: '#/docs/security-threats' },
-      { title: 'Backup Strategies', desc: 'Redundancy and disaster recovery', duration: '10 min', href: '#/docs/backups' },
-      { title: 'Tor Integration', desc: 'Protect your network privacy', duration: '8 min', href: '#/docs/tor' },
+    title: 'Vault Types',
+    icon: Lock,
+    color: 'purple',
+    docs: [
+      { title: 'Timelock Vaults', href: '#/docs/vault-timelock', desc: 'Time-based inheritance release' },
+      { title: 'Dead Man\'s Switch', href: '#/docs/vault-deadman', desc: 'Proof-of-life based inheritance' },
+      { title: 'Multisig Decay', href: '#/docs/vault-multisig', desc: 'Decaying quorum requirements' },
+      { title: 'Hybrid Vaults', href: '#/docs/vault-hybrid', desc: 'Combine multiple conditions' },
+    ]
+  },
+  {
+    title: 'Security',
+    icon: Shield,
+    color: 'green',
+    docs: [
+      { title: 'Threat Model', href: '#/docs/security-threats', desc: 'Understanding attack vectors' },
+      { title: 'Hardware Wallet Integration', href: '#/docs/hardware-wallets', desc: 'Coldcard, Trezor, Ledger setup' },
+      { title: 'Backup Strategies', href: '#/docs/backups', desc: 'Redundancy and recovery' },
+      { title: 'Duress Protection', href: '#/docs/duress', desc: 'Coercion-resistant features' },
+    ]
+  },
+  {
+    title: 'Infrastructure',
+    icon: Globe,
+    color: 'pink',
+    docs: [
+      { title: 'Shamir\'s Secret Sharing', href: '#/docs/shamir', desc: 'Split keys into shares' },
+      { title: 'Nostr Relay Backup', href: '#/docs/nostr', desc: 'Censorship-resistant storage' },
+      { title: 'Tor Integration', href: '#/docs/tor', desc: 'Privacy-preserving connections' },
+    ]
+  },
+  {
+    title: 'Legal & Planning',
+    icon: FileText,
+    color: 'yellow',
+    docs: [
+      { title: 'Estate Planning Integration', href: '#/docs/estate-planning', desc: 'Working with traditional planning' },
+      { title: 'Legal Document Templates', href: '#/docs/legal-templates', desc: 'State-specific templates' },
+      { title: 'Heir Communication', href: '#/docs/heir-communication', desc: 'Preparing your beneficiaries' },
     ]
   },
 ];
 
+const getColorClasses = (color: string) => {
+  const colors: Record<string, string> = {
+    orange: 'bg-orange-500/10 text-orange-400 border-orange-500/30',
+    blue: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
+    purple: 'bg-purple-500/10 text-purple-400 border-purple-500/30',
+    green: 'bg-green-500/10 text-green-400 border-green-500/30',
+    pink: 'bg-pink-500/10 text-pink-400 border-pink-500/30',
+    yellow: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30',
+  };
+  return colors[color] || colors.orange;
+};
+
 export function LearnView() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-white">Learn</h2>
-        <p className="text-zinc-500">Master Bitcoin inheritance and self-custody</p>
+        <p className="text-zinc-400 mt-1">
+          Master trustless Bitcoin inheritance using native scripting.
+        </p>
       </div>
 
-      {topics.map(category => (
-        <div key={category.category}>
-          <h3 className="text-lg font-semibold text-white mb-4">{category.category}</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {category.items.map((item, i) => (
-              <a
-                key={i}
-                href={item.href}
-                className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-6 hover:border-orange-500/50 transition-colors cursor-pointer group block"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center group-hover:bg-orange-500/10 transition-colors">
-                    <BookOpen size={18} className="text-zinc-500 group-hover:text-orange-400 transition-colors" />
-                  </div>
-                  <span className="text-xs text-zinc-500">{item.duration}</span>
-                </div>
-                <h4 className="text-white font-medium mb-2 group-hover:text-orange-400 transition-colors">{item.title}</h4>
-                <p className="text-sm text-zinc-500">{item.desc}</p>
-              </a>
-            ))}
-          </div>
+      {/* Search */}
+      <div className="max-w-xl">
+        <div className="flex items-center gap-3 px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg">
+          <Search size={20} className="text-zinc-500" />
+          <input
+            type="text"
+            placeholder="Search documentation..."
+            className="flex-1 bg-transparent text-white placeholder-zinc-500 outline-none"
+          />
+          <span className="text-xs text-zinc-600 px-2 py-1 bg-zinc-700 rounded">⌘K</span>
         </div>
-      ))}
+      </div>
+
+      {/* Quick Links */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <a
+          href="#/docs/quick-start"
+          className="flex items-center gap-3 p-4 bg-zinc-800/50 border border-zinc-700 rounded-lg hover:border-orange-500/30 transition-colors group"
+        >
+          <Zap size={20} className="text-orange-400" />
+          <span className="font-medium group-hover:text-orange-400 transition-colors">Quick Start</span>
+        </a>
+        <a
+          href="#/docs/vault-architecture"
+          className="flex items-center gap-3 p-4 bg-zinc-800/50 border border-zinc-700 rounded-lg hover:border-orange-500/30 transition-colors group"
+        >
+          <Network size={20} className="text-orange-400" />
+          <span className="font-medium group-hover:text-orange-400 transition-colors">Architecture Map</span>
+        </a>
+        <a
+          href="https://github.com/camiliosalomanda/SatsLegacy"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 p-4 bg-zinc-800/50 border border-zinc-700 rounded-lg hover:border-orange-500/30 transition-colors group"
+        >
+          <Github size={20} className="text-orange-400" />
+          <span className="font-medium group-hover:text-orange-400 transition-colors">Source Code</span>
+        </a>
+        <a
+          href="#/whitepaper"
+          className="flex items-center gap-3 p-4 bg-zinc-800/50 border border-zinc-700 rounded-lg hover:border-orange-500/30 transition-colors group"
+        >
+          <FileText size={20} className="text-orange-400" />
+          <span className="font-medium group-hover:text-orange-400 transition-colors">Whitepaper</span>
+        </a>
+      </div>
+
+      {/* Categories Grid */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {categories.map((category, i) => (
+          <div key={i} className="p-6 bg-zinc-800/30 border border-zinc-800 rounded-xl">
+            <div className="flex items-center gap-3 mb-6">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${getColorClasses(category.color).split(' ').slice(0, 1).join(' ')}`}>
+                <category.icon size={20} className={getColorClasses(category.color).split(' ').slice(1, 2).join(' ')} />
+              </div>
+              <h3 className="text-xl font-bold text-white">{category.title}</h3>
+            </div>
+
+            <div className="space-y-3">
+              {category.docs.map((doc, j) => (
+                <a
+                  key={j}
+                  href={doc.href}
+                  className={`block p-3 rounded-lg hover:bg-zinc-800 transition-colors group ${doc.featured ? 'border border-orange-500/20 bg-orange-500/5' : ''}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-white group-hover:text-orange-400 transition-colors">
+                        {doc.title}
+                        {doc.featured && (
+                          <span className="ml-2 text-xs px-2 py-0.5 bg-orange-500/20 text-orange-400 rounded">Featured</span>
+                        )}
+                      </h4>
+                      <p className="text-sm text-zinc-500">{doc.desc}</p>
+                    </div>
+                    <ChevronRight size={16} className="text-zinc-600 group-hover:text-orange-400 transition-colors" />
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
