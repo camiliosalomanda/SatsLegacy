@@ -1,6 +1,6 @@
 /**
  * BitTrust Vault Creation Wizard
- * 
+ *
  * Multi-step wizard for configuring vault infrastructure and inheritance logic.
  */
 
@@ -8,7 +8,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import {
   Shield, Clock, Users, Key, HardDrive, Cloud, Lock,
   AlertTriangle, CheckCircle, ChevronRight, ChevronLeft,
-  Info, Zap, Eye, EyeOff, RefreshCw, Wallet, Server
+  Info, Zap, Eye, EyeOff, RefreshCw, Wallet, Server, Crown
 } from 'lucide-react';
 
 import {
@@ -25,12 +25,35 @@ import {
 } from '../validation/compatibility';
 
 // ============================================
+// LICENSE / FREE TIER CONFIGURATION
+// ============================================
+
+// Only Simple Sovereign is available on free tier
+const FREE_TIER_BUNDLES = ['simple_sovereign'];
+
+// Free tier infrastructure options
+const FREE_TIER_INFRASTRUCTURE: InfrastructureOption[] = ['local', 'microsd'];
+
+// Free tier logic options
+const FREE_TIER_LOGIC: InheritanceLogic[] = ['timelock'];
+
+// Free tier modifiers (none for free)
+const FREE_TIER_MODIFIERS: Modifier[] = [];
+
+// ============================================
 // TYPES
 // ============================================
+
+interface LicenseInfo {
+  licensed: boolean;
+  tier?: string;
+}
 
 interface WizardProps {
   onComplete: (config: VaultConfiguration, name: string, description?: string) => void;
   onCancel: () => void;
+  licenseInfo?: LicenseInfo;
+  onUpgrade?: () => void;
 }
 
 interface StepProps {
@@ -159,11 +182,15 @@ const MODIFIER_META: Record<Modifier, {
 // MAIN WIZARD COMPONENT
 // ============================================
 
-export const VaultCreationWizard: React.FC<WizardProps> = ({ onComplete, onCancel }) => {
+export const VaultCreationWizard: React.FC<WizardProps> = ({ onComplete, onCancel, licenseInfo, onUpgrade }) => {
   const [step, setStep] = useState<WizardStep>('name');
   const [vaultName, setVaultName] = useState('');
   const [vaultDescription, setVaultDescription] = useState('');
   const [selectedBundle, setSelectedBundle] = useState<string | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeFeature, setUpgradeFeature] = useState<string>('');
+
+  const isLicensed = licenseInfo?.licensed ?? false;
   
   const [config, setConfig] = useState<VaultConfiguration>({
     infrastructure: ['local'],
@@ -215,6 +242,14 @@ export const VaultCreationWizard: React.FC<WizardProps> = ({ onComplete, onCance
       if (bundle) {
         setConfig({ ...bundle.config });
       }
+    } else {
+      // Reset to default config when "Start from Scratch" is selected
+      setConfig({
+        infrastructure: ['local'],
+        primaryLogic: 'timelock',
+        additionalGates: [],
+        modifiers: []
+      });
     }
   }, []);
 
@@ -276,6 +311,11 @@ export const VaultCreationWizard: React.FC<WizardProps> = ({ onComplete, onCance
             <BundleStep
               selected={selectedBundle}
               onSelect={handleBundleSelect}
+              isLicensed={isLicensed}
+              onLockedClick={(name) => {
+                setUpgradeFeature(name);
+                setShowUpgradeModal(true);
+              }}
             />
           )}
           {step === 'infrastructure' && (
@@ -283,6 +323,11 @@ export const VaultCreationWizard: React.FC<WizardProps> = ({ onComplete, onCance
               config={config}
               setConfig={setConfig}
               validation={validation}
+              isLicensed={isLicensed}
+              onLockedClick={(name) => {
+                setUpgradeFeature(name);
+                setShowUpgradeModal(true);
+              }}
             />
           )}
           {step === 'logic' && (
@@ -290,6 +335,11 @@ export const VaultCreationWizard: React.FC<WizardProps> = ({ onComplete, onCance
               config={config}
               setConfig={setConfig}
               validation={validation}
+              isLicensed={isLicensed}
+              onLockedClick={(name) => {
+                setUpgradeFeature(name);
+                setShowUpgradeModal(true);
+              }}
             />
           )}
           {step === 'modifiers' && (
@@ -297,6 +347,11 @@ export const VaultCreationWizard: React.FC<WizardProps> = ({ onComplete, onCance
               config={config}
               setConfig={setConfig}
               validation={validation}
+              isLicensed={isLicensed}
+              onLockedClick={(name) => {
+                setUpgradeFeature(name);
+                setShowUpgradeModal(true);
+              }}
             />
           )}
           {step === 'review' && (
@@ -308,6 +363,46 @@ export const VaultCreationWizard: React.FC<WizardProps> = ({ onComplete, onCance
             />
           )}
         </div>
+
+        {/* Upgrade Modal */}
+        {showUpgradeModal && (
+          <div className="absolute inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+            <div className="bg-zinc-800 rounded-xl border border-zinc-700 p-6 max-w-md">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center">
+                  <Crown className="w-6 h-6 text-orange-500" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Upgrade Required</h3>
+                  <p className="text-sm text-zinc-400">Premium feature</p>
+                </div>
+              </div>
+              <p className="text-zinc-300 mb-4">
+                <span className="font-medium text-white">{upgradeFeature}</span> is available with a SatsLegacy Pro license.
+              </p>
+              <p className="text-sm text-zinc-400 mb-6">
+                Unlock all vault types, advanced security features, and priority support.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowUpgradeModal(false)}
+                  className="flex-1 px-4 py-2 bg-zinc-700 text-zinc-300 rounded-lg hover:bg-zinc-600 transition-colors"
+                >
+                  Maybe Later
+                </button>
+                <button
+                  onClick={() => {
+                    setShowUpgradeModal(false);
+                    onUpgrade?.();
+                  }}
+                  className="flex-1 px-4 py-2 bg-orange-500 text-black font-medium rounded-lg hover:bg-orange-400 transition-colors"
+                >
+                  Upgrade Now
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="p-6 border-t border-zinc-700 flex items-center justify-between">
@@ -395,7 +490,9 @@ const NameStep: React.FC<{
 const BundleStep: React.FC<{
   selected: string | null;
   onSelect: (id: string | null) => void;
-}> = ({ selected, onSelect }) => (
+  isLicensed: boolean;
+  onLockedClick: (name: string) => void;
+}> = ({ selected, onSelect, isLicensed, onLockedClick }) => (
   <div className="space-y-6">
     <div>
       <h3 className="text-lg font-semibold text-white mb-2">Choose Your Starting Point</h3>
@@ -405,36 +502,49 @@ const BundleStep: React.FC<{
     </div>
 
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {PRESET_BUNDLES.map((bundle) => (
+      {PRESET_BUNDLES.map((bundle) => {
+        const isFreeTier = FREE_TIER_BUNDLES.includes(bundle.id);
+        const isLocked = !isLicensed && !isFreeTier;
+
+        return (
         <button
           key={bundle.id}
-          onClick={() => onSelect(bundle.id)}
-          className={`text-left p-4 rounded-lg border transition-all ${
+          onClick={() => isLocked ? onLockedClick(bundle.name) : onSelect(bundle.id)}
+          className={`text-left p-4 rounded-lg border transition-all relative ${
             selected === bundle.id
               ? 'border-orange-500 bg-orange-500/10'
+              : isLocked
+              ? 'border-zinc-700 bg-zinc-800/30 opacity-75'
               : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-500'
           }`}
         >
+          {isLocked && (
+            <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 bg-zinc-700 rounded text-xs text-zinc-400">
+              <Lock className="w-3 h-3" />
+              Pro
+            </div>
+          )}
           <div className="flex items-start justify-between mb-2">
-            <h4 className="font-semibold text-white">{bundle.name}</h4>
+            <h4 className={`font-semibold ${isLocked ? 'text-zinc-400' : 'text-white'}`}>{bundle.name}</h4>
             {selected === bundle.id && (
               <CheckCircle className="w-5 h-5 text-orange-500" />
             )}
           </div>
-          <p className="text-sm text-orange-400 mb-2">{bundle.tagline}</p>
-          <p className="text-sm text-zinc-400 mb-3">{bundle.description}</p>
+          <p className={`text-sm mb-2 ${isLocked ? 'text-zinc-500' : 'text-orange-400'}`}>{bundle.tagline}</p>
+          <p className={`text-sm mb-3 ${isLocked ? 'text-zinc-500' : 'text-zinc-400'}`}>{bundle.description}</p>
           <div className="flex flex-wrap gap-1">
             {bundle.bestFor.map((tag) => (
               <span
                 key={tag}
-                className="text-xs px-2 py-0.5 bg-zinc-700 text-zinc-300 rounded"
+                className={`text-xs px-2 py-0.5 rounded ${isLocked ? 'bg-zinc-800 text-zinc-500' : 'bg-zinc-700 text-zinc-300'}`}
               >
                 {tag}
               </span>
             ))}
           </div>
         </button>
-      ))}
+        );
+      })}
     </div>
 
     <button
@@ -448,25 +558,37 @@ const BundleStep: React.FC<{
       <div className="flex items-center gap-2">
         <Zap className="w-5 h-5 text-zinc-400" />
         <span className="font-medium text-white">Start from Scratch</span>
+        <span className="text-xs px-2 py-0.5 bg-green-500/20 text-green-400 rounded ml-2">Free</span>
         {selected === null && (
           <CheckCircle className="w-5 h-5 text-orange-500 ml-auto" />
         )}
       </div>
       <p className="text-sm text-zinc-400 mt-1">
-        Build your own configuration from individual options.
+        Build your own configuration from individual options. Free tier includes local storage + timelock.
       </p>
     </button>
   </div>
 );
 
-const InfrastructureStep: React.FC<StepProps> = ({ config, setConfig, validation }) => {
+interface StepPropsWithLicense extends StepProps {
+  isLicensed: boolean;
+  onLockedClick: (name: string) => void;
+}
+
+const InfrastructureStep: React.FC<StepPropsWithLicense> = ({ config, setConfig, validation, isLicensed, onLockedClick }) => {
   const availableOptions = useMemo(() => getAvailableOptions(config), [config]);
 
   const toggleOption = useCallback((option: InfrastructureOption) => {
+    // Check if option is locked
+    if (!isLicensed && !FREE_TIER_INFRASTRUCTURE.includes(option)) {
+      onLockedClick(INFRASTRUCTURE_META[option].name);
+      return;
+    }
+
     setConfig(prev => {
       const has = prev.infrastructure.includes(option);
       if (option === 'local') return prev; // Can't remove local
-      
+
       return {
         ...prev,
         infrastructure: has
@@ -474,7 +596,7 @@ const InfrastructureStep: React.FC<StepProps> = ({ config, setConfig, validation
           : [...prev.infrastructure, option]
       };
     });
-  }, [setConfig]);
+  }, [setConfig, isLicensed, onLockedClick]);
 
   return (
     <div className="space-y-6">
@@ -492,15 +614,18 @@ const InfrastructureStep: React.FC<StepProps> = ({ config, setConfig, validation
           const isSelected = config.infrastructure.includes(option);
           const availability = availableOptions.infrastructure.find(o => o.option === option);
           const isDisabled = option !== 'local' && !isSelected && !availability?.canAdd;
+          const isLocked = !isLicensed && !FREE_TIER_INFRASTRUCTURE.includes(option);
 
           return (
             <button
               key={option}
               onClick={() => !isDisabled && option !== 'local' && toggleOption(option)}
-              disabled={isDisabled || option === 'local'}
+              disabled={(isDisabled && !isLocked) || option === 'local'}
               className={`w-full text-left p-4 rounded-lg border transition-all ${
                 isSelected
                   ? 'border-orange-500 bg-orange-500/10'
+                  : isLocked
+                  ? 'border-zinc-800 bg-zinc-800/30 opacity-60'
                   : isDisabled
                   ? 'border-zinc-800 bg-zinc-800/30 opacity-50 cursor-not-allowed'
                   : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-500'
@@ -512,28 +637,37 @@ const InfrastructureStep: React.FC<StepProps> = ({ config, setConfig, validation
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-white">{meta.name}</span>
+                    <span className={`font-medium ${isLocked ? 'text-zinc-400' : 'text-white'}`}>{meta.name}</span>
                     {option === 'local' && (
                       <span className="text-xs px-2 py-0.5 bg-zinc-700 text-zinc-400 rounded">
                         Always On
                       </span>
                     )}
+                    {isLocked && (
+                      <span className="text-xs px-2 py-0.5 bg-zinc-700 text-zinc-400 rounded flex items-center gap-1">
+                        <Lock className="w-3 h-3" />
+                        Pro
+                      </span>
+                    )}
                   </div>
-                  <p className="text-sm text-zinc-400 mt-1">{meta.description}</p>
-                  <p className="text-xs text-zinc-500 mt-1">{meta.protects}</p>
-                  {isDisabled && availability?.reason && (
+                  <p className={`text-sm mt-1 ${isLocked ? 'text-zinc-500' : 'text-zinc-400'}`}>{meta.description}</p>
+                  <p className={`text-xs mt-1 ${isLocked ? 'text-zinc-600' : 'text-zinc-500'}`}>{meta.protects}</p>
+                  {isDisabled && !isLocked && availability?.reason && (
                     <p className="text-xs text-red-400 mt-2 flex items-center gap-1">
                       <AlertTriangle className="w-3 h-3" />
                       {availability.reason}
                     </p>
                   )}
                 </div>
-                {option !== 'local' && (
+                {option !== 'local' && !isLocked && (
                   <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
                     isSelected ? 'border-orange-500 bg-orange-500' : 'border-zinc-600'
                   }`}>
                     {isSelected && <CheckCircle className="w-3 h-3 text-black" />}
                   </div>
+                )}
+                {isLocked && (
+                  <Lock className="w-5 h-5 text-zinc-500" />
                 )}
               </div>
             </button>
@@ -553,19 +687,31 @@ const InfrastructureStep: React.FC<StepProps> = ({ config, setConfig, validation
   );
 };
 
-const LogicStep: React.FC<StepProps> = ({ config, setConfig, validation }) => {
+const LogicStep: React.FC<StepPropsWithLicense> = ({ config, setConfig, validation, isLicensed, onLockedClick }) => {
   const availableOptions = useMemo(() => getAvailableOptions(config), [config]);
 
   const setPrimaryLogic = useCallback((logic: InheritanceLogic) => {
+    // Check if locked
+    if (!isLicensed && !FREE_TIER_LOGIC.includes(logic)) {
+      onLockedClick(LOGIC_META[logic].name);
+      return;
+    }
+
     setConfig(prev => ({
       ...prev,
       primaryLogic: logic,
       // Remove from gates if it was there
       additionalGates: prev.additionalGates.filter(g => g !== logic)
     }));
-  }, [setConfig]);
+  }, [setConfig, isLicensed, onLockedClick]);
 
   const toggleGate = useCallback((gate: InheritanceLogic) => {
+    // Check if locked
+    if (!isLicensed && !FREE_TIER_LOGIC.includes(gate)) {
+      onLockedClick(LOGIC_META[gate].name);
+      return;
+    }
+
     setConfig(prev => {
       const has = prev.additionalGates.includes(gate);
       return {
@@ -575,7 +721,7 @@ const LogicStep: React.FC<StepProps> = ({ config, setConfig, validation }) => {
           : [...prev.additionalGates, gate]
       };
     });
-  }, [setConfig]);
+  }, [setConfig, isLicensed, onLockedClick]);
 
   const primaryOptions: InheritanceLogic[] = ['timelock', 'dead_man_switch', 'multisig_decay'];
   const gateOptions: InheritanceLogic[] = ['challenge', 'oracle', 'duress'];
@@ -596,15 +742,18 @@ const LogicStep: React.FC<StepProps> = ({ config, setConfig, validation }) => {
             const isSelected = config.primaryLogic === option;
             const availability = availableOptions.logic.find(o => o.option === option);
             const isDisabled = !isSelected && !availability?.canAdd;
+            const isLocked = !isLicensed && !FREE_TIER_LOGIC.includes(option);
 
             return (
               <button
                 key={option}
                 onClick={() => !isDisabled && setPrimaryLogic(option)}
-                disabled={isDisabled}
+                disabled={isDisabled && !isLocked}
                 className={`w-full text-left p-4 rounded-lg border transition-all ${
                   isSelected
                     ? 'border-orange-500 bg-orange-500/10'
+                    : isLocked
+                    ? 'border-zinc-800 bg-zinc-800/30 opacity-60'
                     : isDisabled
                     ? 'border-zinc-800 bg-zinc-800/30 opacity-50'
                     : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-500'
@@ -615,15 +764,28 @@ const LogicStep: React.FC<StepProps> = ({ config, setConfig, validation }) => {
                     <Icon className={`w-5 h-5 ${isSelected ? 'text-orange-500' : 'text-zinc-400'}`} />
                   </div>
                   <div className="flex-1">
-                    <span className="font-medium text-white">{meta.name}</span>
-                    <p className="text-sm text-zinc-400 mt-1">{meta.description}</p>
-                    <p className="text-xs text-zinc-500 mt-1">{meta.maintenance}</p>
+                    <div className="flex items-center gap-2">
+                      <span className={`font-medium ${isLocked ? 'text-zinc-400' : 'text-white'}`}>{meta.name}</span>
+                      {isLocked && (
+                        <span className="text-xs px-2 py-0.5 bg-zinc-700 text-zinc-400 rounded flex items-center gap-1">
+                          <Lock className="w-3 h-3" />
+                          Pro
+                        </span>
+                      )}
+                    </div>
+                    <p className={`text-sm mt-1 ${isLocked ? 'text-zinc-500' : 'text-zinc-400'}`}>{meta.description}</p>
+                    <p className={`text-xs mt-1 ${isLocked ? 'text-zinc-600' : 'text-zinc-500'}`}>{meta.maintenance}</p>
                   </div>
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                    isSelected ? 'border-orange-500 bg-orange-500' : 'border-zinc-600'
-                  }`}>
-                    {isSelected && <div className="w-2 h-2 rounded-full bg-black" />}
-                  </div>
+                  {!isLocked && (
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      isSelected ? 'border-orange-500 bg-orange-500' : 'border-zinc-600'
+                    }`}>
+                      {isSelected && <div className="w-2 h-2 rounded-full bg-black" />}
+                    </div>
+                  )}
+                  {isLocked && (
+                    <Lock className="w-5 h-5 text-zinc-500" />
+                  )}
                 </div>
               </button>
             );
@@ -645,15 +807,18 @@ const LogicStep: React.FC<StepProps> = ({ config, setConfig, validation }) => {
             const isSelected = config.additionalGates.includes(option);
             const availability = availableOptions.gates.find(o => o.option === option);
             const isDisabled = !isSelected && !availability?.canAdd;
+            const isLocked = !isLicensed && !FREE_TIER_LOGIC.includes(option);
 
             return (
               <button
                 key={option}
                 onClick={() => !isDisabled && toggleGate(option)}
-                disabled={isDisabled}
+                disabled={(isDisabled && !isLocked)}
                 className={`w-full text-left p-4 rounded-lg border transition-all ${
                   isSelected
                     ? 'border-orange-500 bg-orange-500/10'
+                    : isLocked
+                    ? 'border-zinc-800 bg-zinc-800/30 opacity-60'
                     : isDisabled
                     ? 'border-zinc-800 bg-zinc-800/30 opacity-50'
                     : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-500'
@@ -664,15 +829,28 @@ const LogicStep: React.FC<StepProps> = ({ config, setConfig, validation }) => {
                     <Icon className={`w-5 h-5 ${isSelected ? 'text-orange-500' : 'text-zinc-400'}`} />
                   </div>
                   <div className="flex-1">
-                    <span className="font-medium text-white">{meta.name}</span>
-                    <p className="text-sm text-zinc-400 mt-1">{meta.description}</p>
-                    <p className="text-xs text-zinc-500 mt-1">{meta.maintenance}</p>
+                    <div className="flex items-center gap-2">
+                      <span className={`font-medium ${isLocked ? 'text-zinc-400' : 'text-white'}`}>{meta.name}</span>
+                      {isLocked && (
+                        <span className="text-xs px-2 py-0.5 bg-zinc-700 text-zinc-400 rounded flex items-center gap-1">
+                          <Lock className="w-3 h-3" />
+                          Pro
+                        </span>
+                      )}
+                    </div>
+                    <p className={`text-sm mt-1 ${isLocked ? 'text-zinc-500' : 'text-zinc-400'}`}>{meta.description}</p>
+                    <p className={`text-xs mt-1 ${isLocked ? 'text-zinc-600' : 'text-zinc-500'}`}>{meta.maintenance}</p>
                   </div>
-                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                    isSelected ? 'border-orange-500 bg-orange-500' : 'border-zinc-600'
-                  }`}>
-                    {isSelected && <CheckCircle className="w-3 h-3 text-black" />}
-                  </div>
+                  {!isLocked && (
+                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                      isSelected ? 'border-orange-500 bg-orange-500' : 'border-zinc-600'
+                    }`}>
+                      {isSelected && <CheckCircle className="w-3 h-3 text-black" />}
+                    </div>
+                  )}
+                  {isLocked && (
+                    <Lock className="w-5 h-5 text-zinc-500" />
+                  )}
                 </div>
               </button>
             );
@@ -692,10 +870,16 @@ const LogicStep: React.FC<StepProps> = ({ config, setConfig, validation }) => {
   );
 };
 
-const ModifiersStep: React.FC<StepProps> = ({ config, setConfig, validation }) => {
+const ModifiersStep: React.FC<StepPropsWithLicense> = ({ config, setConfig, validation, isLicensed, onLockedClick }) => {
   const availableOptions = useMemo(() => getAvailableOptions(config), [config]);
 
   const toggleModifier = useCallback((modifier: Modifier) => {
+    // Check if locked
+    if (!isLicensed && !FREE_TIER_MODIFIERS.includes(modifier)) {
+      onLockedClick(MODIFIER_META[modifier].name);
+      return;
+    }
+
     setConfig(prev => {
       const has = prev.modifiers.includes(modifier);
       return {
@@ -705,7 +889,7 @@ const ModifiersStep: React.FC<StepProps> = ({ config, setConfig, validation }) =
           : [...prev.modifiers, modifier]
       };
     });
-  }, [setConfig]);
+  }, [setConfig, isLicensed, onLockedClick]);
 
   return (
     <div className="space-y-6">
@@ -723,15 +907,18 @@ const ModifiersStep: React.FC<StepProps> = ({ config, setConfig, validation }) =
           const isSelected = config.modifiers.includes(option);
           const availability = availableOptions.modifiers.find(o => o.option === option);
           const isDisabled = !isSelected && !availability?.canAdd;
+          const isLocked = !isLicensed && !FREE_TIER_MODIFIERS.includes(option);
 
           return (
             <button
               key={option}
               onClick={() => !isDisabled && toggleModifier(option)}
-              disabled={isDisabled}
+              disabled={(isDisabled && !isLocked)}
               className={`w-full text-left p-4 rounded-lg border transition-all ${
                 isSelected
                   ? 'border-orange-500 bg-orange-500/10'
+                  : isLocked
+                  ? 'border-zinc-800 bg-zinc-800/30 opacity-60'
                   : isDisabled
                   ? 'border-zinc-800 bg-zinc-800/30 opacity-50'
                   : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-500'
@@ -742,20 +929,33 @@ const ModifiersStep: React.FC<StepProps> = ({ config, setConfig, validation }) =
                   <Icon className={`w-5 h-5 ${isSelected ? 'text-orange-500' : 'text-zinc-400'}`} />
                 </div>
                 <div className="flex-1">
-                  <span className="font-medium text-white">{meta.name}</span>
-                  <p className="text-sm text-zinc-400 mt-1">{meta.description}</p>
-                  {isDisabled && availability?.reason && (
+                  <div className="flex items-center gap-2">
+                    <span className={`font-medium ${isLocked ? 'text-zinc-400' : 'text-white'}`}>{meta.name}</span>
+                    {isLocked && (
+                      <span className="text-xs px-2 py-0.5 bg-zinc-700 text-zinc-400 rounded flex items-center gap-1">
+                        <Lock className="w-3 h-3" />
+                        Pro
+                      </span>
+                    )}
+                  </div>
+                  <p className={`text-sm mt-1 ${isLocked ? 'text-zinc-500' : 'text-zinc-400'}`}>{meta.description}</p>
+                  {isDisabled && !isLocked && availability?.reason && (
                     <p className="text-xs text-red-400 mt-2 flex items-center gap-1">
                       <AlertTriangle className="w-3 h-3" />
                       {availability.reason}
                     </p>
                   )}
                 </div>
-                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                  isSelected ? 'border-orange-500 bg-orange-500' : 'border-zinc-600'
-                }`}>
-                  {isSelected && <CheckCircle className="w-3 h-3 text-black" />}
-                </div>
+                {!isLocked && (
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                    isSelected ? 'border-orange-500 bg-orange-500' : 'border-zinc-600'
+                  }`}>
+                    {isSelected && <CheckCircle className="w-3 h-3 text-black" />}
+                  </div>
+                )}
+                {isLocked && (
+                  <Lock className="w-5 h-5 text-zinc-500" />
+                )}
               </div>
             </button>
           );

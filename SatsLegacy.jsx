@@ -2147,6 +2147,11 @@ Declarant Signature`
         <VaultCreationWizard
           onComplete={handleCreateVault}
           onCancel={() => setShowCreateWizard(false)}
+          licenseInfo={licenseInfo}
+          onUpgrade={() => {
+            setShowCreateWizard(false);
+            setCurrentView('settings');
+          }}
         />
       )}
 
