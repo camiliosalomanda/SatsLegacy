@@ -3,7 +3,10 @@
   "version": "1.5.0",
   "description": "Sovereign Bitcoin Inheritance - No custody, no fees, no third parties",
   "main": "electron/main.cjs",
-  "author": "SatsLegacy",
+  "author": {
+    "name": "SatsLegacy",
+    "email": "support@satslegacy.io"
+  },
   "license": "MIT",
   "private": true,
   "type": "module",
