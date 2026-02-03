@@ -366,8 +366,8 @@ export const VaultCreationWizard: React.FC<WizardProps> = ({ onComplete, onCance
 
         {/* Upgrade Modal */}
         {showUpgradeModal && (
-          <div className="absolute inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-            <div className="bg-zinc-800 rounded-xl border border-zinc-700 p-6 max-w-md">
+          <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[100]">
+            <div className="bg-zinc-800 rounded-xl border border-zinc-700 p-6 max-w-md" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center">
                   <Crown className="w-6 h-6 text-orange-500" />
@@ -392,8 +392,10 @@ export const VaultCreationWizard: React.FC<WizardProps> = ({ onComplete, onCance
                 </button>
                 <button
                   onClick={() => {
-                    setShowUpgradeModal(false);
-                    onUpgrade?.();
+                    if (onUpgrade) {
+                      setShowUpgradeModal(false);
+                      onUpgrade();
+                    }
                   }}
                   className="flex-1 px-4 py-2 bg-orange-500 text-black font-medium rounded-lg hover:bg-orange-400 transition-colors"
                 >
