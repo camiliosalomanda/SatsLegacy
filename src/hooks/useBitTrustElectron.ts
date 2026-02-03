@@ -186,9 +186,9 @@ export function useBitTrustElectron() {
       await api.license.purchase(tier);
     } else {
       // Open BTCPay in new tab for web
-      const url = tier === 'pro' 
-        ? 'https://your-btcpay-server.com/checkout/pro'
-        : 'https://your-btcpay-server.com/checkout/standard';
+      const url = tier === 'pro'
+        ? 'https://pay.satslegacy.io/apps/2L3STy2vfnfXfJrNk2CFANmDM1fw/pos/form'
+        : 'https://pay.satslegacy.io/apps/2L3STy2vfnfXfJrNk2CFANmDM1fw/pos/form';
       window.open(url, '_blank');
     }
   }, []);

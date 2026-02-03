@@ -25,20 +25,38 @@ import {
 } from '../validation/compatibility';
 
 // ============================================
-// LICENSE / FREE TIER CONFIGURATION
+// LICENSE TIER CONFIGURATION
 // ============================================
 
-// Only Simple Sovereign is available on free tier
+// Free tier: Simple Sovereign only
 const FREE_TIER_BUNDLES = ['simple_sovereign'];
-
-// Free tier infrastructure options
 const FREE_TIER_INFRASTRUCTURE: InfrastructureOption[] = ['local', 'microsd'];
-
-// Free tier logic options
 const FREE_TIER_LOGIC: InheritanceLogic[] = ['timelock'];
-
-// Free tier modifiers (none for free)
 const FREE_TIER_MODIFIERS: Modifier[] = [];
+
+// Standard tier: Everything EXCEPT Active Guardian and Hostile Environment features
+// Active Guardian uses: dead_man_switch, staggered
+// Hostile Environment uses: duress, decoy
+const STANDARD_TIER_BUNDLES = ['simple_sovereign', 'resilient_sovereign'];
+const STANDARD_TIER_INFRASTRUCTURE: InfrastructureOption[] = ['local', 'microsd', 'shamir', 'nostr', 'ipfs', 'multisig_config'];
+const STANDARD_TIER_LOGIC: InheritanceLogic[] = ['timelock', 'multisig_decay', 'challenge', 'oracle'];
+const STANDARD_TIER_MODIFIERS: Modifier[] = ['multi_beneficiary'];
+
+// Pro tier: Everything (Active Guardian + Hostile Environment)
+// Additional: dead_man_switch, duress, staggered, decoy
+const PRO_ONLY_BUNDLES = ['active_guardian', 'hostile_environment'];
+const PRO_ONLY_LOGIC: InheritanceLogic[] = ['dead_man_switch', 'duress'];
+const PRO_ONLY_MODIFIERS: Modifier[] = ['staggered', 'decoy'];
+
+// Helper to check if feature requires Pro
+const requiresPro = (feature: string, type: 'bundle' | 'logic' | 'modifier'): boolean => {
+  switch (type) {
+    case 'bundle': return PRO_ONLY_BUNDLES.includes(feature);
+    case 'logic': return PRO_ONLY_LOGIC.includes(feature as InheritanceLogic);
+    case 'modifier': return PRO_ONLY_MODIFIERS.includes(feature as Modifier);
+    default: return false;
+  }
+};
 
 // ============================================
 // TYPES
@@ -191,6 +209,7 @@ export const VaultCreationWizard: React.FC<WizardProps> = ({ onComplete, onCance
   const [upgradeFeature, setUpgradeFeature] = useState<string>('');
 
   const isLicensed = licenseInfo?.licensed ?? false;
+  const isPro = licenseInfo?.tier === 'pro';
   
   const [config, setConfig] = useState<VaultConfiguration>({
     infrastructure: ['local'],
@@ -312,6 +331,7 @@ export const VaultCreationWizard: React.FC<WizardProps> = ({ onComplete, onCance
               selected={selectedBundle}
               onSelect={handleBundleSelect}
               isLicensed={isLicensed}
+              isPro={isPro}
               onLockedClick={(name) => {
                 setUpgradeFeature(name);
                 setShowUpgradeModal(true);
@@ -324,6 +344,7 @@ export const VaultCreationWizard: React.FC<WizardProps> = ({ onComplete, onCance
               setConfig={setConfig}
               validation={validation}
               isLicensed={isLicensed}
+              isPro={isPro}
               onLockedClick={(name) => {
                 setUpgradeFeature(name);
                 setShowUpgradeModal(true);
@@ -336,6 +357,7 @@ export const VaultCreationWizard: React.FC<WizardProps> = ({ onComplete, onCance
               setConfig={setConfig}
               validation={validation}
               isLicensed={isLicensed}
+              isPro={isPro}
               onLockedClick={(name) => {
                 setUpgradeFeature(name);
                 setShowUpgradeModal(true);
@@ -348,6 +370,7 @@ export const VaultCreationWizard: React.FC<WizardProps> = ({ onComplete, onCance
               setConfig={setConfig}
               validation={validation}
               isLicensed={isLicensed}
+              isPro={isPro}
               onLockedClick={(name) => {
                 setUpgradeFeature(name);
                 setShowUpgradeModal(true);
@@ -391,13 +414,16 @@ export const VaultCreationWizard: React.FC<WizardProps> = ({ onComplete, onCance
                   Maybe Later
                 </button>
                 <button
-                  onClick={() => {
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShowUpgradeModal(false);
                     if (onUpgrade) {
-                      setShowUpgradeModal(false);
                       onUpgrade();
                     }
                   }}
-                  className="flex-1 px-4 py-2 bg-orange-500 text-black font-medium rounded-lg hover:bg-orange-400 transition-colors"
+                  className="flex-1 px-4 py-2 bg-orange-500 text-black font-medium rounded-lg hover:bg-orange-400 transition-colors cursor-pointer"
                 >
                   Upgrade Now
                 </button>
@@ -470,6 +496,7 @@ const NameStep: React.FC<{
           onChange={(e) => setName(e.target.value)}
           placeholder="e.g., Family Inheritance, Emergency Fund"
           className="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:border-orange-500 focus:outline-none"
+          autoFocus
         />
       </div>
 
@@ -493,8 +520,9 @@ const BundleStep: React.FC<{
   selected: string | null;
   onSelect: (id: string | null) => void;
   isLicensed: boolean;
+  isPro: boolean;
   onLockedClick: (name: string) => void;
-}> = ({ selected, onSelect, isLicensed, onLockedClick }) => (
+}> = ({ selected, onSelect, isLicensed, isPro, onLockedClick }) => (
   <div className="space-y-6">
     <div>
       <h3 className="text-lg font-semibold text-white mb-2">Choose Your Starting Point</h3>
@@ -506,7 +534,12 @@ const BundleStep: React.FC<{
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {PRESET_BUNDLES.map((bundle) => {
         const isFreeTier = FREE_TIER_BUNDLES.includes(bundle.id);
-        const isLocked = !isLicensed && !isFreeTier;
+        const isStandardTier = STANDARD_TIER_BUNDLES.includes(bundle.id);
+        const isProOnly = PRO_ONLY_BUNDLES.includes(bundle.id);
+
+        // Determine if locked: Pro bundles require Pro, Standard bundles require any license, Free bundles are free
+        const isLocked = isProOnly ? !isPro : (!isLicensed && !isFreeTier);
+        const lockLabel = isProOnly ? 'Pro' : 'Standard';
 
         return (
         <button
@@ -523,7 +556,7 @@ const BundleStep: React.FC<{
           {isLocked && (
             <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 bg-zinc-700 rounded text-xs text-zinc-400">
               <Lock className="w-3 h-3" />
-              Pro
+              {lockLabel}
             </div>
           )}
           <div className="flex items-start justify-between mb-2">
@@ -574,15 +607,21 @@ const BundleStep: React.FC<{
 
 interface StepPropsWithLicense extends StepProps {
   isLicensed: boolean;
+  isPro: boolean;
   onLockedClick: (name: string) => void;
 }
 
-const InfrastructureStep: React.FC<StepPropsWithLicense> = ({ config, setConfig, validation, isLicensed, onLockedClick }) => {
+const InfrastructureStep: React.FC<StepPropsWithLicense> = ({ config, setConfig, validation, isLicensed, isPro, onLockedClick }) => {
   const availableOptions = useMemo(() => getAvailableOptions(config), [config]);
 
+  // Infrastructure options are all available with Standard tier (no Pro-only infrastructure)
+  const isInfraLocked = useCallback((option: InfrastructureOption): boolean => {
+    if (FREE_TIER_INFRASTRUCTURE.includes(option)) return false;
+    return !isLicensed; // Standard tier unlocks all infrastructure
+  }, [isLicensed]);
+
   const toggleOption = useCallback((option: InfrastructureOption) => {
-    // Check if option is locked
-    if (!isLicensed && !FREE_TIER_INFRASTRUCTURE.includes(option)) {
+    if (isInfraLocked(option)) {
       onLockedClick(INFRASTRUCTURE_META[option].name);
       return;
     }
@@ -598,7 +637,7 @@ const InfrastructureStep: React.FC<StepPropsWithLicense> = ({ config, setConfig,
           : [...prev.infrastructure, option]
       };
     });
-  }, [setConfig, isLicensed, onLockedClick]);
+  }, [setConfig, isInfraLocked, onLockedClick]);
 
   return (
     <div className="space-y-6">
@@ -616,7 +655,7 @@ const InfrastructureStep: React.FC<StepPropsWithLicense> = ({ config, setConfig,
           const isSelected = config.infrastructure.includes(option);
           const availability = availableOptions.infrastructure.find(o => o.option === option);
           const isDisabled = option !== 'local' && !isSelected && !availability?.canAdd;
-          const isLocked = !isLicensed && !FREE_TIER_INFRASTRUCTURE.includes(option);
+          const isLocked = isInfraLocked(option);
 
           return (
             <button
@@ -648,7 +687,7 @@ const InfrastructureStep: React.FC<StepPropsWithLicense> = ({ config, setConfig,
                     {isLocked && (
                       <span className="text-xs px-2 py-0.5 bg-zinc-700 text-zinc-400 rounded flex items-center gap-1">
                         <Lock className="w-3 h-3" />
-                        Pro
+                        Standard
                       </span>
                     )}
                   </div>
@@ -689,12 +728,18 @@ const InfrastructureStep: React.FC<StepPropsWithLicense> = ({ config, setConfig,
   );
 };
 
-const LogicStep: React.FC<StepPropsWithLicense> = ({ config, setConfig, validation, isLicensed, onLockedClick }) => {
+const LogicStep: React.FC<StepPropsWithLicense> = ({ config, setConfig, validation, isLicensed, isPro, onLockedClick }) => {
   const availableOptions = useMemo(() => getAvailableOptions(config), [config]);
 
+  // Check if a logic option is locked based on tier
+  const isLogicLocked = useCallback((logic: InheritanceLogic): boolean => {
+    if (PRO_ONLY_LOGIC.includes(logic)) return !isPro;
+    if (FREE_TIER_LOGIC.includes(logic)) return false;
+    return !isLicensed; // Standard tier features
+  }, [isLicensed, isPro]);
+
   const setPrimaryLogic = useCallback((logic: InheritanceLogic) => {
-    // Check if locked
-    if (!isLicensed && !FREE_TIER_LOGIC.includes(logic)) {
+    if (isLogicLocked(logic)) {
       onLockedClick(LOGIC_META[logic].name);
       return;
     }
@@ -705,11 +750,10 @@ const LogicStep: React.FC<StepPropsWithLicense> = ({ config, setConfig, validati
       // Remove from gates if it was there
       additionalGates: prev.additionalGates.filter(g => g !== logic)
     }));
-  }, [setConfig, isLicensed, onLockedClick]);
+  }, [setConfig, isLogicLocked, onLockedClick]);
 
   const toggleGate = useCallback((gate: InheritanceLogic) => {
-    // Check if locked
-    if (!isLicensed && !FREE_TIER_LOGIC.includes(gate)) {
+    if (isLogicLocked(gate)) {
       onLockedClick(LOGIC_META[gate].name);
       return;
     }
@@ -723,7 +767,7 @@ const LogicStep: React.FC<StepPropsWithLicense> = ({ config, setConfig, validati
           : [...prev.additionalGates, gate]
       };
     });
-  }, [setConfig, isLicensed, onLockedClick]);
+  }, [setConfig, isLogicLocked, onLockedClick]);
 
   const primaryOptions: InheritanceLogic[] = ['timelock', 'dead_man_switch', 'multisig_decay'];
   const gateOptions: InheritanceLogic[] = ['challenge', 'oracle', 'duress'];
@@ -744,7 +788,8 @@ const LogicStep: React.FC<StepPropsWithLicense> = ({ config, setConfig, validati
             const isSelected = config.primaryLogic === option;
             const availability = availableOptions.logic.find(o => o.option === option);
             const isDisabled = !isSelected && !availability?.canAdd;
-            const isLocked = !isLicensed && !FREE_TIER_LOGIC.includes(option);
+            const isLocked = isLogicLocked(option);
+            const lockLabel = PRO_ONLY_LOGIC.includes(option) ? 'Pro' : 'Standard';
 
             return (
               <button
@@ -771,7 +816,7 @@ const LogicStep: React.FC<StepPropsWithLicense> = ({ config, setConfig, validati
                       {isLocked && (
                         <span className="text-xs px-2 py-0.5 bg-zinc-700 text-zinc-400 rounded flex items-center gap-1">
                           <Lock className="w-3 h-3" />
-                          Pro
+                          {lockLabel}
                         </span>
                       )}
                     </div>
@@ -809,7 +854,8 @@ const LogicStep: React.FC<StepPropsWithLicense> = ({ config, setConfig, validati
             const isSelected = config.additionalGates.includes(option);
             const availability = availableOptions.gates.find(o => o.option === option);
             const isDisabled = !isSelected && !availability?.canAdd;
-            const isLocked = !isLicensed && !FREE_TIER_LOGIC.includes(option);
+            const isLocked = isLogicLocked(option);
+            const lockLabel = PRO_ONLY_LOGIC.includes(option) ? 'Pro' : 'Standard';
 
             return (
               <button
@@ -836,7 +882,7 @@ const LogicStep: React.FC<StepPropsWithLicense> = ({ config, setConfig, validati
                       {isLocked && (
                         <span className="text-xs px-2 py-0.5 bg-zinc-700 text-zinc-400 rounded flex items-center gap-1">
                           <Lock className="w-3 h-3" />
-                          Pro
+                          {lockLabel}
                         </span>
                       )}
                     </div>
@@ -872,12 +918,19 @@ const LogicStep: React.FC<StepPropsWithLicense> = ({ config, setConfig, validati
   );
 };
 
-const ModifiersStep: React.FC<StepPropsWithLicense> = ({ config, setConfig, validation, isLicensed, onLockedClick }) => {
+const ModifiersStep: React.FC<StepPropsWithLicense> = ({ config, setConfig, validation, isLicensed, isPro, onLockedClick }) => {
   const availableOptions = useMemo(() => getAvailableOptions(config), [config]);
 
+  // Check if a modifier is locked based on tier
+  const isModifierLocked = useCallback((modifier: Modifier): boolean => {
+    if (PRO_ONLY_MODIFIERS.includes(modifier)) return !isPro;
+    if (FREE_TIER_MODIFIERS.includes(modifier)) return false;
+    if (STANDARD_TIER_MODIFIERS.includes(modifier)) return !isLicensed;
+    return !isLicensed; // Default to requiring license
+  }, [isLicensed, isPro]);
+
   const toggleModifier = useCallback((modifier: Modifier) => {
-    // Check if locked
-    if (!isLicensed && !FREE_TIER_MODIFIERS.includes(modifier)) {
+    if (isModifierLocked(modifier)) {
       onLockedClick(MODIFIER_META[modifier].name);
       return;
     }
@@ -891,7 +944,7 @@ const ModifiersStep: React.FC<StepPropsWithLicense> = ({ config, setConfig, vali
           : [...prev.modifiers, modifier]
       };
     });
-  }, [setConfig, isLicensed, onLockedClick]);
+  }, [setConfig, isModifierLocked, onLockedClick]);
 
   return (
     <div className="space-y-6">
@@ -909,7 +962,8 @@ const ModifiersStep: React.FC<StepPropsWithLicense> = ({ config, setConfig, vali
           const isSelected = config.modifiers.includes(option);
           const availability = availableOptions.modifiers.find(o => o.option === option);
           const isDisabled = !isSelected && !availability?.canAdd;
-          const isLocked = !isLicensed && !FREE_TIER_MODIFIERS.includes(option);
+          const isLocked = isModifierLocked(option);
+          const lockLabel = PRO_ONLY_MODIFIERS.includes(option) ? 'Pro' : 'Standard';
 
           return (
             <button
@@ -936,7 +990,7 @@ const ModifiersStep: React.FC<StepPropsWithLicense> = ({ config, setConfig, vali
                     {isLocked && (
                       <span className="text-xs px-2 py-0.5 bg-zinc-700 text-zinc-400 rounded flex items-center gap-1">
                         <Lock className="w-3 h-3" />
-                        Pro
+                        {lockLabel}
                       </span>
                     )}
                   </div>

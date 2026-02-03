@@ -513,9 +513,9 @@ ipcMain.handle('license:activate', async (event, { licenseKey }) => {
 
 ipcMain.handle('license:purchase', async (event, { tier }) => {
   // Open BTCPay Server checkout
-  const btcpayUrl = tier === 'pro' 
-    ? 'https://your-btcpay-server.com/checkout/pro'
-    : 'https://your-btcpay-server.com/checkout/standard';
+  const btcpayUrl = tier === 'pro'
+    ? 'https://pay.satslegacy.io/apps/2L3STy2vfnfXfJrNk2CFANmDM1fw/pos/form'
+    : 'https://pay.satslegacy.io/apps/2L3STy2vfnfXfJrNk2CFANmDM1fw/pos/form';
   
   shell.openExternal(btcpayUrl);
   return { success: true };

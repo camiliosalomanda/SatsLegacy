@@ -671,18 +671,12 @@ export function SettingsModal() {
                 </div>
               )}
               {!licenseInfo.licensed && (
-                <div className="mt-3 space-y-2">
+                <div className="mt-3">
                   <button
                     onClick={() => electronAPI?.license.purchase('standard')}
-                    className="w-full py-2 bg-orange-500 text-black font-medium rounded-lg hover:bg-orange-600 transition-colors"
+                    className="w-full py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-black font-medium rounded-lg hover:opacity-90 transition-opacity"
                   >
-                    Upgrade to Standard - $99
-                  </button>
-                  <button
-                    onClick={() => electronAPI?.license.purchase('pro')}
-                    className="w-full py-2 bg-gradient-to-r from-purple-500 to-orange-500 text-white font-medium rounded-lg hover:opacity-90 transition-opacity"
-                  >
-                    Upgrade to Pro - $299
+                    Upgrade Now
                   </button>
                 </div>
               )}

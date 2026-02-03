@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useVaults } from '../contexts/VaultContext';
 import { useUI } from '../contexts/UIContext';
+import { useSettings } from '../contexts/SettingsContext';
 
 // Views
 import { DashboardView } from '../views/DashboardView';
@@ -30,11 +31,13 @@ export function SatsLegacy() {
     pendingVaultData,
     createVault,
     saveVaultWithPassword,
+    saveVaultChanges,
     setPendingVaultData
   } = useVaults();
 
   const {
     currentView,
+    setCurrentView,
     showCreateWizard,
     setShowCreateWizard,
     showHeirKitGenerator,
@@ -43,6 +46,8 @@ export function SatsLegacy() {
     closeModal,
     activeModal
   } = useUI();
+
+  const { licenseInfo } = useSettings();
 
   // Track if we just created a vault to trigger password modal
   // NOTE: All hooks must be called before any conditional returns
@@ -90,7 +95,11 @@ export function SatsLegacy() {
 
   const handlePasswordSubmit = async (password: string) => {
     try {
-      await saveVaultWithPassword(password);
+      if (activeModal?.type === 'password' && activeModal.mode === 'save') {
+        await saveVaultChanges(password);
+      } else {
+        await saveVaultWithPassword(password);
+      }
       closeModal();
     } catch (e) {
       alert('Failed to save vault: ' + (e as Error).message);
@@ -124,6 +133,11 @@ export function SatsLegacy() {
         <VaultCreationWizard
           onComplete={handleCreateVault}
           onCancel={() => setShowCreateWizard(false)}
+          licenseInfo={licenseInfo}
+          onUpgrade={() => {
+            setShowCreateWizard(false);
+            openModal({ type: 'settings' });
+          }}
         />
       )}
 
