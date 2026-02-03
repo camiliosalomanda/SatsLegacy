@@ -276,7 +276,7 @@ const LandingPage = ({ onEnterApp }) => {
               <p className="text-4xl font-bold mb-1">$99</p>
               <p className="text-zinc-500 text-sm mb-6">one-time</p>
               <ul className="space-y-3 mb-8">
-                {['10 vaults', 'All inheritance types', 'Shamir backups', 'Nostr sync', 'Email support'].map((f, i) => (
+                {['10 vaults', 'Simple & Resilient Sovereign bundles', 'Timelock & Multisig Decay', 'Shamir backups', 'Nostr sync'].map((f, i) => (
                   <li key={i} className="flex items-center gap-2 text-sm text-zinc-300">
                     <CheckCircle size={16} className="text-green-400" />
                     {f}
@@ -300,7 +300,7 @@ const LandingPage = ({ onEnterApp }) => {
               <p className="text-4xl font-bold mb-1">$299</p>
               <p className="text-zinc-500 text-sm mb-6">one-time</p>
               <ul className="space-y-3 mb-8">
-                {['Unlimited vaults', 'All inheritance types', 'Shamir + Nostr', 'Legal templates', 'Priority support', 'Future updates'].map((f, i) => (
+                {['Unlimited vaults', 'All features & bundles', 'Legal templates', 'Priority support', 'Lifetime updates'].map((f, i) => (
                   <li key={i} className="flex items-center gap-2 text-sm text-zinc-300">
                     <CheckCircle size={16} className="text-orange-400" />
                     {f}

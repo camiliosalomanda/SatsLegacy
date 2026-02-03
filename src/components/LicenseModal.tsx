@@ -39,10 +39,10 @@ const TIERS = [
     priceNote: 'one-time',
     features: [
       '10 vaults',
-      'All inheritance logic types',
+      'Simple & Resilient Sovereign bundles',
+      'Timelock & Multisig Decay',
       'Shamir backup splits',
-      'Nostr relay backup',
-      'Email support'
+      'Nostr relay backup'
     ],
     limitations: [
       'No legal templates'
@@ -56,12 +56,10 @@ const TIERS = [
     priceNote: 'one-time',
     features: [
       'Unlimited vaults',
-      'All inheritance logic types',
-      'Shamir backup splits',
-      'Nostr relay backup',
-      'State-specific legal templates',
+      'All features & bundles',
+      'Legal templates',
       'Priority support',
-      'Future updates included'
+      'Lifetime updates'
     ],
     limitations: [],
     highlighted: true
