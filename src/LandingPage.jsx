@@ -14,10 +14,12 @@ import {
 const LandingPage = ({ onEnterApp }) => {
   const [showAllFeatures, setShowAllFeatures] = useState(false);
 
-  const DOWNLOAD_URL_WINDOWS = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.0/SatsLegacy.Setup.1.5.0.exe';
-  const DOWNLOAD_URL_WINDOWS_PORTABLE = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.0/SatsLegacy.1.5.0.exe';
-  const DOWNLOAD_URL_MAC = '#'; // Coming soon
-  const DOWNLOAD_URL_LINUX = '#'; // Coming soon
+  const DOWNLOAD_URL_WINDOWS = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.1/SatsLegacy.Setup.1.5.1.exe';
+  const DOWNLOAD_URL_WINDOWS_PORTABLE = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.1/SatsLegacy.1.5.1.exe';
+  const DOWNLOAD_URL_MAC = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.1/SatsLegacy-1.5.1-arm64.dmg';
+  const DOWNLOAD_URL_MAC_INTEL = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.1/SatsLegacy-1.5.1-x64.dmg';
+  const DOWNLOAD_URL_LINUX = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.1/SatsLegacy-1.5.1.AppImage';
+  const DOWNLOAD_URL_LINUX_DEB = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.1/satslegacy_1.5.1_amd64.deb';
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
@@ -322,7 +324,7 @@ const LandingPage = ({ onEnterApp }) => {
       <section id="download" className="max-w-6xl mx-auto px-6 py-24">
         <div className="text-center mb-12">
           <h2 className="text-4xl font-bold mb-4">Download SatsLegacy</h2>
-          <p className="text-zinc-400">Available for Windows. Mac and Linux coming soon.</p>
+          <p className="text-zinc-400">Available for Windows, macOS, and Linux.</p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto">
@@ -350,19 +352,49 @@ const LandingPage = ({ onEnterApp }) => {
           </div>
 
           {/* Mac */}
-          <div className="p-6 bg-zinc-800/30 border border-zinc-800 rounded-xl text-center opacity-60">
-            <Apple size={48} className="mx-auto mb-4 text-zinc-600" />
-            <h3 className="font-semibold text-zinc-500 mb-1">macOS</h3>
-            <p className="text-sm text-zinc-600 mb-4">Intel & Apple Silicon</p>
-            <span className="text-sm text-zinc-600">Coming Soon</span>
+          <div className="p-6 bg-zinc-800/50 border border-zinc-700 rounded-xl text-center">
+            <Apple size={48} className="mx-auto mb-4 text-orange-400" />
+            <h3 className="font-semibold text-white mb-1">macOS</h3>
+            <p className="text-sm text-zinc-500 mb-4">Intel & Apple Silicon</p>
+            <div className="space-y-2">
+              <a
+                href={DOWNLOAD_URL_MAC}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-black font-medium rounded-lg transition-colors text-sm"
+              >
+                <Download size={16} />
+                Apple Silicon (.dmg)
+              </a>
+              <a
+                href={DOWNLOAD_URL_MAC_INTEL}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg transition-colors text-sm"
+              >
+                <Download size={16} />
+                Intel (.dmg)
+              </a>
+            </div>
           </div>
 
           {/* Linux */}
-          <div className="p-6 bg-zinc-800/30 border border-zinc-800 rounded-xl text-center opacity-60">
-            <Terminal size={48} className="mx-auto mb-4 text-zinc-600" />
-            <h3 className="font-semibold text-zinc-500 mb-1">Linux</h3>
-            <p className="text-sm text-zinc-600 mb-4">AppImage</p>
-            <span className="text-sm text-zinc-600">Coming Soon</span>
+          <div className="p-6 bg-zinc-800/50 border border-zinc-700 rounded-xl text-center">
+            <Terminal size={48} className="mx-auto mb-4 text-orange-400" />
+            <h3 className="font-semibold text-white mb-1">Linux</h3>
+            <p className="text-sm text-zinc-500 mb-4">AppImage & Deb</p>
+            <div className="space-y-2">
+              <a
+                href={DOWNLOAD_URL_LINUX}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-black font-medium rounded-lg transition-colors text-sm"
+              >
+                <Download size={16} />
+                AppImage
+              </a>
+              <a
+                href={DOWNLOAD_URL_LINUX_DEB}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg transition-colors text-sm"
+              >
+                <Download size={16} />
+                Debian (.deb)
+              </a>
+            </div>
           </div>
         </div>
 
