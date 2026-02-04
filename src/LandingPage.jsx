@@ -17,9 +17,9 @@ const LandingPage = ({ onEnterApp }) => {
   const DOWNLOAD_URL_WINDOWS = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.1/SatsLegacy.Setup.1.5.1.exe';
   const DOWNLOAD_URL_WINDOWS_PORTABLE = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.1/SatsLegacy.1.5.1.exe';
   const DOWNLOAD_URL_MAC = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.1/SatsLegacy-1.5.1-arm64.dmg';
-  const DOWNLOAD_URL_MAC_INTEL = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.1/SatsLegacy-1.5.1-x64.dmg';
+  const DOWNLOAD_URL_MAC_INTEL = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.1/SatsLegacy-1.5.1.dmg';
   const DOWNLOAD_URL_LINUX = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.1/SatsLegacy-1.5.1.AppImage';
-  const DOWNLOAD_URL_LINUX_DEB = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.1/satslegacy_1.5.1_amd64.deb';
+  const DOWNLOAD_URL_LINUX_DEB = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.1/SatsLegacy_1.5.1_amd64.deb';
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
