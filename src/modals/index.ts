@@ -1,9 +1,11 @@
 export { PasswordModal } from './PasswordModal';
 export { AddBeneficiaryModal } from './AddBeneficiaryModal';
+export { EditBeneficiaryModal } from './EditBeneficiaryModal';
 export { ExportModal } from './ExportModal';
 export { OwnerKeyModal } from './OwnerKeyModal';
 export { DeleteVaultModal } from './DeleteVaultModal';
 export { EditVaultModal } from './EditVaultModal';
+export { EditTimelockModal } from './EditTimelockModal';
 export { SettingsModal } from './SettingsModal';
 export { PSBTExportModal } from './PSBTExportModal';
 export { PSBTImportModal } from './PSBTImportModal';

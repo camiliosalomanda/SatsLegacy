@@ -3,10 +3,12 @@ import { useUI } from '../contexts/UIContext';
 import { useVaults } from '../contexts/VaultContext';
 import { PasswordModal } from './PasswordModal';
 import { AddBeneficiaryModal } from './AddBeneficiaryModal';
+import { EditBeneficiaryModal } from './EditBeneficiaryModal';
 import { ExportModal } from './ExportModal';
 import { OwnerKeyModal } from './OwnerKeyModal';
 import { DeleteVaultModal } from './DeleteVaultModal';
 import { EditVaultModal } from './EditVaultModal';
+import { EditTimelockModal } from './EditTimelockModal';
 import { SettingsModal } from './SettingsModal';
 import { PSBTExportModal } from './PSBTExportModal';
 import { PSBTImportModal } from './PSBTImportModal';
@@ -35,6 +37,8 @@ export function ModalRenderer({ onPasswordSubmit, onPasswordCancel }: ModalRende
       );
     case 'addBeneficiary':
       return selectedVault ? <AddBeneficiaryModal /> : null;
+    case 'editBeneficiary':
+      return selectedVault ? <EditBeneficiaryModal index={activeModal.index} /> : null;
     case 'export':
       return selectedVault ? <ExportModal /> : null;
     case 'ownerKey':
@@ -43,6 +47,8 @@ export function ModalRenderer({ onPasswordSubmit, onPasswordCancel }: ModalRende
       return <DeleteVaultModal vault={activeModal.vault} />;
     case 'edit':
       return selectedVault ? <EditVaultModal /> : null;
+    case 'editTimelock':
+      return selectedVault ? <EditTimelockModal /> : null;
     case 'settings':
       return <SettingsModal />;
     case 'psbt':

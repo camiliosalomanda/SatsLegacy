@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Key, X } from 'lucide-react';
 import { useVaults } from '../contexts/VaultContext';
 import { useUI } from '../contexts/UIContext';
+import { validatePublicKey } from '../utils/validation';
 
 export function OwnerKeyModal() {
   const { setOwnerKey } = useVaults();
@@ -11,8 +12,9 @@ export function OwnerKeyModal() {
   const [error, setError] = useState('');
 
   const handleSubmit = () => {
-    if (!pubkey.trim() || pubkey.length < 20) {
-      setError('Please enter a valid public key or xpub');
+    const validation = validatePublicKey(pubkey);
+    if (!validation.valid) {
+      setError(validation.error || 'Invalid public key');
       return;
     }
     setOwnerKey(pubkey.trim());

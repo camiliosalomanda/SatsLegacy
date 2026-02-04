@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Key, X, AlertTriangle } from 'lucide-react';
 
 interface PasswordModalProps {
-  mode: 'create' | 'unlock';
+  mode: 'create' | 'unlock' | 'save';
   onSubmit: (password: string) => void;
   onCancel: () => void;
 }
@@ -13,7 +13,8 @@ export function PasswordModal({ mode, onSubmit, onCancel }: PasswordModalProps) 
   const [error, setError] = useState('');
 
   const handleSubmit = () => {
-    if (mode === 'create') {
+    // For create and save modes, require password confirmation
+    if (mode === 'create' || mode === 'save') {
       if (password.length < 8) {
         setError('Password must be at least 8 characters');
         return;
@@ -35,7 +36,7 @@ export function PasswordModal({ mode, onSubmit, onCancel }: PasswordModalProps) 
               <Key size={20} className="text-orange-400" />
             </div>
             <h2 className="text-xl font-bold text-white">
-              {mode === 'create' ? 'Encrypt Vault' : 'Unlock Vault'}
+              {mode === 'create' ? 'Encrypt Vault' : mode === 'save' ? 'Save Changes' : 'Unlock Vault'}
             </h2>
           </div>
           <button onClick={onCancel} className="p-2 rounded-lg hover:bg-zinc-800 transition-colors">
@@ -47,6 +48,8 @@ export function PasswordModal({ mode, onSubmit, onCancel }: PasswordModalProps) 
           <p className="text-zinc-400 text-sm">
             {mode === 'create'
               ? 'Choose a strong password to encrypt your vault. This password will be required to access or modify your vault.'
+              : mode === 'save'
+              ? 'Enter and confirm your vault password to save changes. Your vault will be re-encrypted with this password.'
               : 'Enter your password to unlock this vault.'}
           </p>
 
@@ -61,7 +64,7 @@ export function PasswordModal({ mode, onSubmit, onCancel }: PasswordModalProps) 
             />
           </div>
 
-          {mode === 'create' && (
+          {(mode === 'create' || mode === 'save') && (
             <div>
               <label className="block text-sm text-zinc-400 mb-2">Confirm Password</label>
               <input
@@ -92,7 +95,7 @@ export function PasswordModal({ mode, onSubmit, onCancel }: PasswordModalProps) 
             onClick={handleSubmit}
             className="w-full py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-black font-semibold rounded-xl hover:opacity-90 transition-opacity"
           >
-            {mode === 'create' ? 'Create Encrypted Vault' : 'Unlock'}
+            {mode === 'create' ? 'Create Encrypted Vault' : mode === 'save' ? 'Save Changes' : 'Unlock'}
           </button>
         </div>
       </div>

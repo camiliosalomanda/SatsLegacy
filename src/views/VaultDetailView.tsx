@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Lock, ChevronRight, Save, Key, Users, Trash2, UserPlus, Download, Upload, FileText, Package,
   Edit3, Check, Copy, QrCode, AlertTriangle, Heart, Clock, RefreshCw
@@ -16,12 +16,18 @@ interface VaultDetailViewProps {
 }
 
 export function VaultDetailView({ vault }: VaultDetailViewProps) {
-  const { selectVault, hasUnsavedChanges, saveVaultChanges, removeBeneficiary } = useVaults();
+  const { selectVault, hasUnsavedChanges, removeBeneficiary } = useVaults();
   const { setCurrentView, openModal, setEditFormData, setShowHeirKitGenerator } = useUI();
   const { copiedAddress, setCopiedAddress } = usePrice();
   const { settings } = useSettings();
 
   const daysUntil = getDaysUntilUnlock(vault);
+
+  // Truncate address for display: tb1qxyz...abc123
+  const truncateAddress = (addr: string) => {
+    if (addr.length <= 20) return addr;
+    return `${addr.slice(0, 10)}...${addr.slice(-6)}`;
+  };
 
   const handleCopyAddress = async () => {
     if (vault.address) {
@@ -31,10 +37,7 @@ export function VaultDetailView({ vault }: VaultDetailViewProps) {
   };
 
   const handleSave = () => {
-    const password = prompt("Enter vault password to save changes:");
-    if (password) {
-      saveVaultChanges(password);
-    }
+    openModal({ type: 'password', mode: 'save' });
   };
 
   return (
@@ -96,7 +99,16 @@ export function VaultDetailView({ vault }: VaultDetailViewProps) {
             <p className="text-zinc-500">${vault.balanceUSD.toLocaleString()}</p>
           </div>
           <div>
-            <p className="text-zinc-500 text-sm mb-1">Time Until Unlock</p>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-zinc-500 text-sm">Time Until Unlock</p>
+              <button
+                onClick={() => openModal({ type: 'editTimelock' })}
+                className="p-1 rounded hover:bg-zinc-700 transition-colors"
+                title="Edit timelock"
+              >
+                <Edit3 size={14} className="text-zinc-500 hover:text-orange-400" />
+              </button>
+            </div>
             <p className="text-3xl font-bold text-orange-400">{daysUntil} days</p>
             <p className="text-zinc-500">{new Date(vault.lockDate).toLocaleDateString()}</p>
           </div>
@@ -120,7 +132,9 @@ export function VaultDetailView({ vault }: VaultDetailViewProps) {
         {vault.ownerPubkey ? (
           <div className="flex items-center gap-3 p-4 bg-zinc-800/50 rounded-xl">
             <Key size={20} className="text-green-400" />
-            <code className="flex-1 text-sm text-zinc-300 font-mono truncate">{vault.ownerPubkey}</code>
+            <code className="flex-1 text-sm text-zinc-300 font-mono" title={vault.ownerPubkey}>
+              {truncateAddress(vault.ownerPubkey)}
+            </code>
             <Check size={18} className="text-green-400" />
           </div>
         ) : (
@@ -154,11 +168,16 @@ export function VaultDetailView({ vault }: VaultDetailViewProps) {
         </div>
         {vault.address ? (
           <div className="flex items-center gap-3 p-4 bg-zinc-800/50 rounded-xl">
-            <code className="flex-1 text-sm text-zinc-300 font-mono break-all">{vault.address}</code>
-            <button onClick={handleCopyAddress} className="p-2 rounded-lg bg-zinc-700 hover:bg-zinc-600 transition-colors">
+            <code
+              className="flex-1 text-sm text-zinc-300 font-mono cursor-help"
+              title={vault.address}
+            >
+              {truncateAddress(vault.address)}
+            </code>
+            <button onClick={handleCopyAddress} className="p-2 rounded-lg bg-zinc-700 hover:bg-zinc-600 transition-colors" title="Copy full address">
               {copiedAddress ? <Check size={18} className="text-green-400" /> : <Copy size={18} className="text-zinc-400" />}
             </button>
-            <button className="p-2 rounded-lg bg-zinc-700 hover:bg-zinc-600 transition-colors">
+            <button className="p-2 rounded-lg bg-zinc-700 hover:bg-zinc-600 transition-colors" title="Show QR code">
               <QrCode size={18} className="text-zinc-400" />
             </button>
           </div>
@@ -277,12 +296,21 @@ export function VaultDetailView({ vault }: VaultDetailViewProps) {
               </div>
               <div className="flex-1">
                 <p className="text-white font-medium">{beneficiary.name}</p>
-                <p className="text-xs text-zinc-500 font-mono">{beneficiary.pubkey}</p>
+                <p className="text-xs text-zinc-500 font-mono" title={beneficiary.pubkey}>
+                  {truncateAddress(beneficiary.pubkey)}
+                </p>
               </div>
               <div className="text-right">
                 <p className="text-lg font-bold text-orange-400">{beneficiary.percentage}%</p>
                 <p className="text-xs text-zinc-500">{(vault.balance * beneficiary.percentage / 100).toFixed(8)} BTC</p>
               </div>
+              <button
+                onClick={() => openModal({ type: 'editBeneficiary', index: i })}
+                className="p-2 rounded-lg hover:bg-zinc-700 transition-colors"
+                title="Edit beneficiary"
+              >
+                <Edit3 size={16} className="text-zinc-500 hover:text-orange-400" />
+              </button>
               <button
                 onClick={() => removeBeneficiary(i)}
                 className="p-2 rounded-lg hover:bg-red-500/20 transition-colors"
