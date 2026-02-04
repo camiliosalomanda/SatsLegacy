@@ -1,6 +1,6 @@
 {
   "name": "SatsLegacy",
-  "version": "1.5.3",
+  "version": "1.5.4",
   "description": "Sovereign Bitcoin Inheritance - No custody, no fees, no third parties",
   "main": "electron/main.cjs",
   "author": {
