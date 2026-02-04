@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import type { Vault, Beneficiary, PendingVaultData } from '../types/vault';
 import type { NetworkType } from '../types/settings';
 import { fetchAddressBalance } from '../utils/api/blockchain';
+import { generateVaultAddress } from '../vault/scripts/bitcoin-address';
 
 // Check if running in Electron
 const isElectron = typeof window !== 'undefined' && window.isElectron;
@@ -32,6 +33,7 @@ interface VaultContextValue {
   // Vault modifications
   updateSelectedVault: (updates: Partial<Vault>) => void;
   addBeneficiary: (beneficiary: Beneficiary) => void;
+  updateBeneficiary: (index: number, beneficiary: Beneficiary) => void;
   removeBeneficiary: (index: number) => void;
   setOwnerKey: (pubkey: string) => void;
 
@@ -68,23 +70,29 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       try {
         const result = await electronAPI.vault.list();
         if (result.success && result.vaults) {
+          // Meta now contains minimal data - sensitive fields require unlock
           const loadedVaults = result.vaults.map((meta: Record<string, unknown>) => ({
-            id: meta.id,
-            vault_id: meta.id,
+            id: meta.vault_id,
+            vault_id: meta.vault_id,
             name: meta.name || 'Unnamed Vault',
             description: meta.description || '',
             balance: 0,
             balanceUSD: 0,
-            address: meta.address || '',
+            address: '', // Requires unlock
             status: meta.status || 'pending',
-            scriptType: meta.scriptType || 'timelock',
-            lockDate: meta.lockDate || new Date().toISOString(),
-            beneficiaries: meta.beneficiaries || [],
-            ownerPubkey: meta.ownerPubkey || '',
-            inactivityTrigger: meta.inactivityTrigger || 365,
-            infrastructure: meta.infrastructure || ['local'],
+            scriptType: (meta.logic as { primary?: string })?.primary || 'timelock',
+            lockDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+            beneficiaries: [], // Requires unlock - meta only has count
+            ownerPubkey: '', // Requires unlock
+            inactivityTrigger: 365,
+            infrastructure: ['local'],
             logic: meta.logic || { primary: 'timelock', gates: [] },
-            modifiers: meta.modifiers || {}
+            modifiers: {},
+            // Flags from meta for UI display
+            _hasOwnerKey: meta.hasOwnerKey || false,
+            _hasAddress: meta.hasAddress || false,
+            _beneficiaryCount: meta.beneficiaryCount || 0,
+            _needsUnlock: true
           }));
           setVaults(loadedVaults);
         }
@@ -320,60 +328,135 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     }
   }, [loadVaults]);
 
-  const updateSelectedVault = useCallback((updates: Partial<Vault>) => {
-    if (!selectedVault) return;
+  // Helper to generate vault address when keys are available
+  // Returns { address, witnessScript } or null if can't generate
+  const tryGenerateVaultScript = useCallback((vault: Vault, network: 'mainnet' | 'testnet' | 'signet' = 'testnet'): { address: string; witnessScript?: string } | null => {
+    if (!vault.ownerPubkey || vault.beneficiaries.length === 0) {
+      return null;
+    }
 
-    const updatedVault = { ...selectedVault, ...updates };
-    setVaults(prev => prev.map(v =>
-      (v.id === selectedVault.id || v.vault_id === selectedVault.vault_id) ? updatedVault : v
-    ));
-    setSelectedVault(updatedVault);
-    setHasUnsavedChanges(true);
-  }, [selectedVault]);
+    try {
+      const heirPubkeys = vault.beneficiaries.map(b => b.pubkey);
+
+      const result = generateVaultAddress(
+        {
+          logic: vault.logic || { primary: 'timelock' },
+          ownerPubkey: vault.ownerPubkey,
+          heirPubkeys,
+          locktime: vault.lockDate ? Math.floor(new Date(vault.lockDate).getTime() / 1000 / 600) + 500000 : undefined,
+          inactivityDays: vault.inactivityTrigger,
+        },
+        network
+      );
+      return { address: result.address, witnessScript: result.script };
+    } catch (e) {
+      console.error('[tryGenerateVaultScript] Failed:', e);
+      return null;
+    }
+  }, []);
 
   const addBeneficiary = useCallback((beneficiary: Beneficiary) => {
     if (!selectedVault) return;
 
+    const updatedBeneficiaries = [...selectedVault.beneficiaries, beneficiary];
+    const tempVault = { ...selectedVault, beneficiaries: updatedBeneficiaries };
+    const scriptResult = tryGenerateVaultScript(tempVault);
+
     const updatedVault = {
       ...selectedVault,
-      beneficiaries: [...selectedVault.beneficiaries, beneficiary]
+      beneficiaries: updatedBeneficiaries,
+      address: scriptResult?.address || selectedVault.address,
+      witnessScript: scriptResult?.witnessScript || selectedVault.witnessScript
     };
     setVaults(prev => prev.map(v =>
       (v.id === selectedVault.id || v.vault_id === selectedVault.vault_id) ? updatedVault : v
     ));
     setSelectedVault(updatedVault);
     setHasUnsavedChanges(true);
-  }, [selectedVault]);
+  }, [selectedVault, tryGenerateVaultScript]);
+
+  const updateBeneficiary = useCallback((index: number, beneficiary: Beneficiary) => {
+    if (!selectedVault) return;
+
+    const updatedBeneficiaries = selectedVault.beneficiaries.map((b, i) =>
+      i === index ? beneficiary : b
+    );
+    const tempVault = { ...selectedVault, beneficiaries: updatedBeneficiaries };
+    const scriptResult = tryGenerateVaultScript(tempVault);
+
+    const updatedVault = {
+      ...selectedVault,
+      beneficiaries: updatedBeneficiaries,
+      address: scriptResult?.address || selectedVault.address,
+      witnessScript: scriptResult?.witnessScript || selectedVault.witnessScript
+    };
+    setVaults(prev => prev.map(v =>
+      (v.id === selectedVault.id || v.vault_id === selectedVault.vault_id) ? updatedVault : v
+    ));
+    setSelectedVault(updatedVault);
+    setHasUnsavedChanges(true);
+  }, [selectedVault, tryGenerateVaultScript]);
 
   const removeBeneficiary = useCallback((index: number) => {
     if (!selectedVault) return;
 
     const updatedBeneficiaries = selectedVault.beneficiaries.filter((_, i) => i !== index);
+    const tempVault = { ...selectedVault, beneficiaries: updatedBeneficiaries };
+    const scriptResult = updatedBeneficiaries.length > 0 ? tryGenerateVaultScript(tempVault) : null;
+
     const updatedVault = {
       ...selectedVault,
-      beneficiaries: updatedBeneficiaries
+      beneficiaries: updatedBeneficiaries,
+      address: scriptResult?.address || '',
+      witnessScript: scriptResult?.witnessScript
     };
     setVaults(prev => prev.map(v =>
       (v.id === selectedVault.id || v.vault_id === selectedVault.vault_id) ? updatedVault : v
     ));
     setSelectedVault(updatedVault);
     setHasUnsavedChanges(true);
-  }, [selectedVault]);
+  }, [selectedVault, tryGenerateVaultScript]);
 
   const setOwnerKey = useCallback((pubkey: string) => {
     if (!selectedVault) return;
 
+    const tempVault = { ...selectedVault, ownerPubkey: pubkey };
+    const scriptResult = tryGenerateVaultScript(tempVault);
+
     const updatedVault = {
       ...selectedVault,
       ownerPubkey: pubkey,
-      status: 'active' as const
+      status: 'active' as const,
+      address: scriptResult?.address || selectedVault.address,
+      witnessScript: scriptResult?.witnessScript || selectedVault.witnessScript
     };
     setVaults(prev => prev.map(v =>
       (v.id === selectedVault.id || v.vault_id === selectedVault.vault_id) ? updatedVault : v
     ));
     setSelectedVault(updatedVault);
     setHasUnsavedChanges(true);
-  }, [selectedVault]);
+  }, [selectedVault, tryGenerateVaultScript]);
+
+  const updateSelectedVault = useCallback((updates: Partial<Vault>) => {
+    if (!selectedVault) return;
+
+    const updatedVault = { ...selectedVault, ...updates };
+
+    // Regenerate address if lockDate or inactivityTrigger changed
+    if (updates.lockDate !== undefined || updates.inactivityTrigger !== undefined) {
+      const scriptResult = tryGenerateVaultScript(updatedVault);
+      if (scriptResult) {
+        updatedVault.address = scriptResult.address;
+        updatedVault.witnessScript = scriptResult.witnessScript;
+      }
+    }
+
+    setVaults(prev => prev.map(v =>
+      (v.id === selectedVault.id || v.vault_id === selectedVault.vault_id) ? updatedVault : v
+    ));
+    setSelectedVault(updatedVault);
+    setHasUnsavedChanges(true);
+  }, [selectedVault, tryGenerateVaultScript]);
 
   const updateVaultBalances = useCallback(async (btcPrice: number, network: NetworkType) => {
     const updatedVaults = await Promise.all(
@@ -423,6 +506,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       importVault,
       updateSelectedVault,
       addBeneficiary,
+      updateBeneficiary,
       removeBeneficiary,
       setOwnerKey,
       setHasUnsavedChanges,

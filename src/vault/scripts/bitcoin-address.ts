@@ -1,11 +1,13 @@
 /**
  * SatsLegacy Bitcoin Address Utilities
- * 
+ *
  * Generates vault addresses from configuration.
  * Uses bitcoinjs-lib for address derivation.
  */
 
 import * as bitcoin from 'bitcoinjs-lib';
+import bs58check from 'bs58check';
+import { Buffer } from 'buffer';
 
 // Network configurations
 const networks = {
@@ -13,6 +15,76 @@ const networks = {
   testnet: bitcoin.networks.testnet,
   signet: bitcoin.networks.testnet, // Signet uses testnet address format
 };
+
+/**
+ * Convert a Uint8Array to hex string
+ */
+function toHex(bytes: Uint8Array): string {
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Convert an xpub/tpub to a hex-encoded public key
+ *
+ * Extended public key format (78 bytes total after base58check decode):
+ * - 4 bytes: version
+ * - 1 byte: depth
+ * - 4 bytes: parent fingerprint
+ * - 4 bytes: child index
+ * - 32 bytes: chain code
+ * - 33 bytes: public key
+ */
+export function xpubToPublicKey(xpub: string): string {
+  try {
+    // Decode base58check - returns Uint8Array
+    const decoded = bs58check.decode(xpub);
+
+    // Validate length (78 bytes)
+    if (decoded.length !== 78) {
+      throw new Error(`Invalid xpub length: ${decoded.length}, expected 78`);
+    }
+
+    // Extract public key (last 33 bytes)
+    const publicKey = decoded.slice(45, 78);
+
+    // Validate it's a compressed public key (starts with 02 or 03)
+    if (publicKey[0] !== 0x02 && publicKey[0] !== 0x03) {
+      throw new Error('Invalid public key prefix');
+    }
+
+    return toHex(publicKey);
+  } catch (e) {
+    console.error('Failed to parse xpub:', e);
+    throw new Error('Invalid extended public key format');
+  }
+}
+
+/**
+ * Check if a string is an extended public key (xpub/tpub/etc)
+ */
+export function isExtendedPubkey(key: string): boolean {
+  return /^[xtuvyz]pub[a-zA-Z0-9]{100,}$/.test(key);
+}
+
+/**
+ * Check if a string is a valid hex public key (33 bytes compressed)
+ */
+export function isHexPubkey(key: string): boolean {
+  return /^(02|03)[a-fA-F0-9]{64}$/.test(key);
+}
+
+/**
+ * Normalize a public key - convert xpub to hex if needed
+ */
+export function normalizePublicKey(key: string): string {
+  if (isHexPubkey(key)) {
+    return key.toLowerCase();
+  }
+  if (isExtendedPubkey(key)) {
+    return xpubToPublicKey(key);
+  }
+  throw new Error('Invalid public key format. Expected xpub/tpub or 33-byte hex compressed pubkey.');
+}
 
 /**
  * Generate a simple P2WPKH (native segwit) address from a public key
@@ -567,11 +639,15 @@ export function generateVaultAddress(
     return { address: '' };
   }
 
+  // Normalize keys - convert xpub/tpub to hex pubkeys if needed
+  const normalizedOwnerPubkey = normalizePublicKey(ownerPubkey);
+  const normalizedHeirPubkeys = heirPubkeys.map(pk => normalizePublicKey(pk));
+
   switch (logic.primary) {
     case 'timelock': {
       const result = generateTimelockAddress(
-        ownerPubkey,
-        heirPubkeys[0],
+        normalizedOwnerPubkey,
+        normalizedHeirPubkeys[0],
         locktime || 880000 + 52560, // Default ~1 year from now
         network
       );
@@ -587,8 +663,8 @@ export function generateVaultAddress(
       const days = inactivityDays || 90; // Default 90 days
       const sequenceBlocks = days * 144;
       const result = generateDeadManSwitchAddress(
-        ownerPubkey,
-        heirPubkeys[0],
+        normalizedOwnerPubkey,
+        normalizedHeirPubkeys[0],
         sequenceBlocks,
         network
       );
@@ -605,15 +681,15 @@ export function generateVaultAddress(
       // Default config: 2-of-3 initially, 1-of-2 heirs after 1 year
       const config = decayConfig || {
         initialThreshold: 2,
-        initialTotal: Math.min(3, 1 + heirPubkeys.length), // owner + up to 2 heirs
+        initialTotal: Math.min(3, 1 + normalizedHeirPubkeys.length), // owner + up to 2 heirs
         decayedThreshold: 1,
-        decayedTotal: Math.min(2, heirPubkeys.length),
+        decayedTotal: Math.min(2, normalizedHeirPubkeys.length),
         decayAfterBlocks: locktime || 880000 + 52560, // Default ~1 year from now
       };
 
       const result = generateMultisigDecayAddress(
-        ownerPubkey,
-        heirPubkeys,
+        normalizedOwnerPubkey,
+        normalizedHeirPubkeys,
         config,
         network
       );
@@ -627,10 +703,10 @@ export function generateVaultAddress(
 
     default: {
       // Default to simple timelock
-      if (heirPubkeys.length > 0) {
+      if (normalizedHeirPubkeys.length > 0) {
         const result = generateTimelockAddress(
-          ownerPubkey,
-          heirPubkeys[0],
+          normalizedOwnerPubkey,
+          normalizedHeirPubkeys[0],
           locktime || 880000 + 52560,
           network
         );
@@ -691,4 +767,8 @@ export default {
   generateVaultAddress,
   validateAddress,
   getAddressType,
+  xpubToPublicKey,
+  isExtendedPubkey,
+  isHexPubkey,
+  normalizePublicKey,
 };
