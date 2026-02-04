@@ -254,7 +254,7 @@ const DocsPage = ({ onNavigate }) => {
       <footer className="border-t border-zinc-800">
         <div className="max-w-6xl mx-auto px-6 py-8 text-center text-sm text-zinc-600">
           <p>Not your keys, not your coins. Not your script, not your inheritance.</p>
-          <p className="mt-2">© 2025 SatsLegacy. Open source under MIT License.</p>
+          <p className="mt-2">© 2026 SatsLegacy. Open source under MIT License.</p>
         </div>
       </footer>
     </div>

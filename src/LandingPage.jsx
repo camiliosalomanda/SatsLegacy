@@ -195,19 +195,19 @@ const LandingPage = ({ onEnterApp }) => {
 
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { icon: Lock, title: 'Timelock Vaults', desc: 'Funds unlock at a specific block height. Immutable once set.', color: 'orange' },
-              { icon: Clock, title: "Dead Man's Switch", desc: 'Requires periodic proof of life. Miss a check-in, heirs can claim.', color: 'purple' },
-              { icon: Users, title: 'Multisig Decay', desc: 'Starts 2-of-3, decays to 1-of-2 after timelock. Automatic handoff.', color: 'blue' },
-              { icon: Key, title: 'Shamir Backups', desc: 'Split vault keys into shares. Any 2-of-3 reconstructs.', color: 'green' },
-              { icon: Globe, title: 'Nostr Relay Backup', desc: 'Censorship-resistant off-site storage. Survives house fires.', color: 'pink' },
-              { icon: Shield, title: 'Duress Protection', desc: 'Wrong PIN routes to decoy or burn address. Coercion-resistant.', color: 'red' }
+              { icon: Lock, title: 'Timelock Vaults', desc: 'Funds unlock at a specific block height. Immutable once set.', bgClass: 'bg-orange-500/10', textClass: 'text-orange-400' },
+              { icon: Clock, title: "Dead Man's Switch", desc: 'Requires periodic proof of life. Miss a check-in, heirs can claim.', bgClass: 'bg-purple-500/10', textClass: 'text-purple-400' },
+              { icon: Users, title: 'Multisig Decay', desc: 'Starts 2-of-3, decays to 1-of-2 after timelock. Automatic handoff.', bgClass: 'bg-blue-500/10', textClass: 'text-blue-400' },
+              { icon: Key, title: 'Shamir Backups', desc: 'Split vault keys into shares. Any 2-of-3 reconstructs.', bgClass: 'bg-green-500/10', textClass: 'text-green-400' },
+              { icon: Globe, title: 'Nostr Relay Backup', desc: 'Censorship-resistant off-site storage. Survives house fires.', bgClass: 'bg-pink-500/10', textClass: 'text-pink-400' },
+              { icon: Shield, title: 'Duress Protection', desc: 'Wrong PIN routes to decoy or burn address. Coercion-resistant.', bgClass: 'bg-red-500/10', textClass: 'text-red-400' }
             ].map((feature, i) => (
               <div
                 key={i}
                 className="p-6 bg-zinc-800/50 border border-zinc-700 rounded-xl hover:border-zinc-600 transition-colors"
               >
-                <div className={`w-12 h-12 rounded-xl bg-${feature.color}-500/10 flex items-center justify-center mb-4`}>
-                  <feature.icon size={24} className={`text-${feature.color}-400`} style={{ color: feature.color === 'orange' ? '#fb923c' : undefined }} />
+                <div className={`w-12 h-12 rounded-xl ${feature.bgClass} flex items-center justify-center mb-4`}>
+                  <feature.icon size={24} className={feature.textClass} />
                 </div>
                 <h3 className="text-lg font-semibold text-white mb-2">{feature.title}</h3>
                 <p className="text-zinc-400 text-sm">{feature.desc}</p>
@@ -523,7 +523,7 @@ const LandingPage = ({ onEnterApp }) => {
               <a href="https://github.com/camiliosalomanda/SatsLegacy" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">GitHub</a>
               <a href="#/docs" className="hover:text-white transition-colors">Documentation</a>
               <a href="#/claim" className="hover:text-orange-400 transition-colors">Heir Portal</a>
-              <a href="#" className="hover:text-white transition-colors">Support</a>
+              <a href="https://github.com/camiliosalomanda/SatsLegacy/issues" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Support</a>
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-zinc-800 text-center text-sm text-zinc-600">

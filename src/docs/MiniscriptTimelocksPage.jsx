@@ -391,7 +391,7 @@ const MiniscriptTimelocksPage = () => {
       {/* Footer */}
       <footer className="border-t border-zinc-800">
         <div className="max-w-4xl mx-auto px-6 py-8 text-center text-sm text-zinc-600">
-          <p>© 2025 SatsLegacy. Open source under MIT License.</p>
+          <p>© 2026 SatsLegacy. Open source under MIT License.</p>
         </div>
       </footer>
     </div>

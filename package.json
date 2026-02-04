@@ -57,7 +57,7 @@
   "build": {
     "appId": "com.SatsLegacy.app",
     "productName": "SatsLegacy",
-    "copyright": "Copyright © 2025 SatsLegacy",
+    "copyright": "Copyright © 2026 SatsLegacy",
     "directories": {
       "output": "release",
       "buildResources": "build"

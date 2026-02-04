@@ -120,7 +120,7 @@ const InstallationPage = () => {
               <ol className="space-y-2 text-zinc-300">
                 <li className="flex gap-3">
                   <span className="text-orange-500 font-medium">1.</span>
-                  Download <code className="bg-zinc-800 px-2 py-0.5 rounded text-sm">SatsLegacy Setup 1.0.0.exe</code>
+                  Download <code className="bg-zinc-800 px-2 py-0.5 rounded text-sm">SatsLegacy Setup 1.5.4.exe</code>
                 </li>
                 <li className="flex gap-3">
                   <span className="text-orange-500 font-medium">2.</span>
@@ -138,7 +138,7 @@ const InstallationPage = () => {
               <ol className="space-y-2 text-zinc-300">
                 <li className="flex gap-3">
                   <span className="text-orange-500 font-medium">1.</span>
-                  Download <code className="bg-zinc-800 px-2 py-0.5 rounded text-sm">SatsLegacy 1.0.0.exe</code>
+                  Download <code className="bg-zinc-800 px-2 py-0.5 rounded text-sm">SatsLegacy 1.5.4.exe</code>
                 </li>
                 <li className="flex gap-3">
                   <span className="text-orange-500 font-medium">2.</span>
@@ -175,7 +175,7 @@ const InstallationPage = () => {
             <ol className="space-y-2 text-zinc-300">
               <li className="flex gap-3">
                 <span className="text-orange-500 font-medium">1.</span>
-                Download <code className="bg-zinc-800 px-2 py-0.5 rounded text-sm">SatsLegacy-1.0.0.dmg</code>
+                Download <code className="bg-zinc-800 px-2 py-0.5 rounded text-sm">SatsLegacy-1.5.4.dmg</code>
               </li>
               <li className="flex gap-3">
                 <span className="text-orange-500 font-medium">2.</span>
@@ -214,15 +214,15 @@ const InstallationPage = () => {
             <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
               <h3 className="font-semibold text-white mb-3">AppImage (Universal)</h3>
               <div className="bg-zinc-800 rounded-lg p-4 font-mono text-sm text-zinc-300">
-                <p>chmod +x SatsLegacy-1.0.0.AppImage</p>
-                <p>./SatsLegacy-1.0.0.AppImage</p>
+                <p>chmod +x SatsLegacy-1.5.4.AppImage</p>
+                <p>./SatsLegacy-1.5.4.AppImage</p>
               </div>
             </div>
 
             <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
               <h3 className="font-semibold text-white mb-3">Debian/Ubuntu (.deb)</h3>
               <div className="bg-zinc-800 rounded-lg p-4 font-mono text-sm text-zinc-300">
-                <p>sudo dpkg -i satslegacy_1.0.0_amd64.deb</p>
+                <p>sudo dpkg -i satslegacy_1.5.4_amd64.deb</p>
                 <p>sudo apt-get install -f  # Install dependencies</p>
               </div>
             </div>

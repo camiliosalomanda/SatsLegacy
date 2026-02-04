@@ -30,6 +30,62 @@ const LICENSE_PATH = path.join(APP_DATA_PATH, 'license.json');
 const SETTINGS_PATH = path.join(APP_DATA_PATH, 'settings.json');
 
 // ============================================
+// RATE LIMITING (Brute Force Protection)
+// ============================================
+
+// Track failed attempts per vault
+const failedAttempts = new Map(); // vaultId -> { count, lastAttempt, lockedUntil }
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 60000; // 1 minute lockout
+const ATTEMPT_RESET_MS = 300000;   // Reset counter after 5 minutes of no attempts
+
+function checkRateLimit(vaultId) {
+  const now = Date.now();
+  const record = failedAttempts.get(vaultId);
+
+  if (!record) {
+    return { allowed: true };
+  }
+
+  // Check if locked out
+  if (record.lockedUntil && now < record.lockedUntil) {
+    const remainingSeconds = Math.ceil((record.lockedUntil - now) / 1000);
+    return {
+      allowed: false,
+      error: `Too many failed attempts. Try again in ${remainingSeconds} seconds.`,
+      remainingSeconds
+    };
+  }
+
+  // Reset if enough time has passed
+  if (now - record.lastAttempt > ATTEMPT_RESET_MS) {
+    failedAttempts.delete(vaultId);
+  }
+
+  return { allowed: true };
+}
+
+function recordFailedAttempt(vaultId) {
+  const now = Date.now();
+  const record = failedAttempts.get(vaultId) || { count: 0, lastAttempt: 0, lockedUntil: null };
+
+  record.count++;
+  record.lastAttempt = now;
+
+  if (record.count >= MAX_FAILED_ATTEMPTS) {
+    record.lockedUntil = now + LOCKOUT_DURATION_MS;
+    record.count = 0; // Reset count after lockout
+    console.log(`[Security] Vault ${vaultId.slice(0, 8)}... locked out for ${LOCKOUT_DURATION_MS / 1000}s after ${MAX_FAILED_ATTEMPTS} failed attempts`);
+  }
+
+  failedAttempts.set(vaultId, record);
+}
+
+function clearFailedAttempts(vaultId) {
+  failedAttempts.delete(vaultId);
+}
+
+// ============================================
 // SECURITY UTILITIES
 // ============================================
 
@@ -318,6 +374,12 @@ ipcMain.handle('vault:create', async (event, { vault, password }) => {
 
 ipcMain.handle('vault:load', async (event, { vaultId, password }) => {
   try {
+    // Check rate limit before attempting to decrypt
+    const rateCheck = checkRateLimit(vaultId);
+    if (!rateCheck.allowed) {
+      return { success: false, error: rateCheck.error, rateLimited: true };
+    }
+
     // Validate vaultId to prevent path traversal
     const vaultPath = safeVaultPath(vaultId, '.vault');
     if (!vaultPath) {
@@ -329,11 +391,19 @@ ipcMain.handle('vault:load', async (event, { vaultId, password }) => {
     }
 
     const encrypted = JSON.parse(fs.readFileSync(vaultPath, 'utf8'));
-    const vault = decrypt(encrypted, password);
 
-    return { success: true, vault };
+    try {
+      const vault = decrypt(encrypted, password);
+      // Success - clear failed attempts
+      clearFailedAttempts(vaultId);
+      return { success: true, vault };
+    } catch (decryptError) {
+      // Failed decryption - record failed attempt
+      recordFailedAttempt(vaultId);
+      return { success: false, error: 'Invalid password or corrupted vault' };
+    }
   } catch (error) {
-    return { success: false, error: 'Invalid password or corrupted vault' };
+    return { success: false, error: error.message };
   }
 });
 
@@ -533,10 +603,44 @@ function decodeLicenseKey(key) {
 
 function verifyLicense(license) {
   try {
-    // In production, verify Ed25519 signature
-    // For now, check structure
-    return license && license.tier && license.signature;
-  } catch {
+    // Validate required fields exist
+    if (!license || !license.tier || !license.email || !license.issued_at || !license.signature) {
+      console.log('License missing required fields');
+      return false;
+    }
+
+    // Validate tier is valid
+    if (!['standard', 'pro'].includes(license.tier)) {
+      console.log('Invalid license tier:', license.tier);
+      return false;
+    }
+
+    // Create the message that was signed (must match what the license server signs)
+    // Format: tier:email:issued_at
+    const message = `${license.tier}:${license.email}:${license.issued_at}`;
+    const messageBuffer = Buffer.from(message, 'utf8');
+
+    // Parse the public key from SPKI DER format
+    const publicKeyDer = Buffer.from(BTCPAY_PUBLIC_KEY, 'hex');
+    const publicKey = crypto.createPublicKey({
+      key: publicKeyDer,
+      format: 'der',
+      type: 'spki'
+    });
+
+    // Decode the signature from hex
+    const signature = Buffer.from(license.signature, 'hex');
+
+    // Verify the Ed25519 signature
+    const isValid = crypto.verify(null, messageBuffer, publicKey, signature);
+
+    if (!isValid) {
+      console.log('License signature verification failed');
+    }
+
+    return isValid;
+  } catch (error) {
+    console.error('License verification error:', error.message);
     return false;
   }
 }
@@ -673,7 +777,14 @@ ipcMain.handle('duress:checkPassword', async (event, { password }) => {
 
     // Hash the provided password with stored salt
     const testHash = hashDuressPassword(password, settings.duress.salt);
-    const isDuress = testHash === settings.duress.passwordHash;
+
+    // Use timing-safe comparison to prevent timing attacks
+    const testBuffer = Buffer.from(testHash, 'hex');
+    const storedBuffer = Buffer.from(settings.duress.passwordHash, 'hex');
+
+    // Ensure buffers are same length before comparison
+    const isDuress = testBuffer.length === storedBuffer.length &&
+                     crypto.timingSafeEqual(testBuffer, storedBuffer);
 
     return { success: true, isDuress };
   } catch (error) {
@@ -1134,10 +1245,45 @@ ipcMain.handle('system:getAppInfo', async () => {
 // NOTIFICATIONS (Email via API Gateway)
 // ============================================
 
-// Email is sent via centralized API gateway to keep API keys secure
-// The gateway validates the app secret and proxies to Resend
+// SECURITY NOTE: This app secret is visible in the built application.
+// Electron apps cannot truly hide secrets since they can be decompiled.
+//
+// Mitigations in place:
+// 1. Email is sent via API gateway (not direct to Resend) - actual API key stays server-side
+// 2. Gateway should implement rate limiting per IP/email address
+// 3. Gateway should validate email recipients against allowlist or domain rules
+// 4. Worst case: attacker can send emails through gateway (not access Resend directly)
+//
+// TODO: Consider rotating this secret periodically and updating via app updates
 const EMAIL_API_GATEWAY = 'https://vercel-api-gateway-gules.vercel.app/api/resend';
 const EMAIL_APP_SECRET = '22b0d350f5b480d1dd44b957c846a51c5cb4b4db2a32a3006d36f5620a58b554';
+
+// Email rate limiting - prevent spam
+const emailRateLimit = new Map(); // email -> { count, windowStart }
+const EMAIL_RATE_LIMIT = 3;        // Max emails per window
+const EMAIL_RATE_WINDOW_MS = 3600000; // 1 hour window
+
+function checkEmailRateLimit(email) {
+  const now = Date.now();
+  const record = emailRateLimit.get(email);
+
+  if (!record || (now - record.windowStart > EMAIL_RATE_WINDOW_MS)) {
+    // New window
+    emailRateLimit.set(email, { count: 1, windowStart: now });
+    return { allowed: true };
+  }
+
+  if (record.count >= EMAIL_RATE_LIMIT) {
+    const remainingMinutes = Math.ceil((record.windowStart + EMAIL_RATE_WINDOW_MS - now) / 60000);
+    return {
+      allowed: false,
+      error: `Email rate limit exceeded. Try again in ${remainingMinutes} minutes.`
+    };
+  }
+
+  record.count++;
+  return { allowed: true };
+}
 
 async function sendEmailViaProxy({ from, to, subject, html, text }) {
   try {
@@ -1166,6 +1312,12 @@ async function sendEmailViaProxy({ from, to, subject, html, text }) {
 
 ipcMain.handle('notifications:sendCheckInReminder', async (event, { toEmail, vaultName, daysRemaining, status }) => {
   try {
+    // Check email rate limit
+    const rateCheck = checkEmailRateLimit(toEmail);
+    if (!rateCheck.allowed) {
+      return { success: false, error: rateCheck.error, rateLimited: true };
+    }
+
     // Load settings for from email
     let settings = DEFAULT_SETTINGS;
     if (fs.existsSync(SETTINGS_PATH)) {
@@ -1195,6 +1347,12 @@ ipcMain.handle('notifications:sendCheckInReminder', async (event, { toEmail, vau
 
 ipcMain.handle('notifications:sendHeirNotification', async (event, { toEmail, vaultName, ownerName }) => {
   try {
+    // Check email rate limit
+    const rateCheck = checkEmailRateLimit(toEmail);
+    if (!rateCheck.allowed) {
+      return { success: false, error: rateCheck.error, rateLimited: true };
+    }
+
     let settings = DEFAULT_SETTINGS;
     if (fs.existsSync(SETTINGS_PATH)) {
       settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8'));
@@ -1216,6 +1374,12 @@ ipcMain.handle('notifications:sendHeirNotification', async (event, { toEmail, va
 
 ipcMain.handle('notifications:testEmail', async (event, { toEmail }) => {
   try {
+    // Check email rate limit
+    const rateCheck = checkEmailRateLimit(toEmail);
+    if (!rateCheck.allowed) {
+      return { success: false, error: rateCheck.error, rateLimited: true };
+    }
+
     let settings = DEFAULT_SETTINGS;
     if (fs.existsSync(SETTINGS_PATH)) {
       settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8'));
