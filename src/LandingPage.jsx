@@ -250,28 +250,7 @@ const LandingPage = ({ onEnterApp }) => {
             <p className="text-zinc-400">One-time purchase. No subscriptions. Pay with Bitcoin.</p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            {/* Free */}
-            <div className="p-8 bg-zinc-800/50 border border-zinc-700 rounded-2xl">
-              <h3 className="text-xl font-bold mb-2">Free</h3>
-              <p className="text-4xl font-bold mb-1">$0</p>
-              <p className="text-zinc-500 text-sm mb-6">forever</p>
-              <ul className="space-y-3 mb-8">
-                {['3 vaults', 'Basic timelock', 'Local storage', 'Community support'].map((f, i) => (
-                  <li key={i} className="flex items-center gap-2 text-sm text-zinc-400">
-                    <CheckCircle size={16} className="text-zinc-500" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <a
-                href="#download"
-                className="block w-full py-3 text-center bg-zinc-700 text-white rounded-lg hover:bg-zinc-600 transition-colors"
-              >
-                Download Free
-              </a>
-            </div>
-
+          <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
             {/* Standard */}
             <div className="p-8 bg-zinc-800/50 border border-zinc-700 rounded-2xl">
               <h3 className="text-xl font-bold mb-2">Standard</h3>
@@ -286,10 +265,12 @@ const LandingPage = ({ onEnterApp }) => {
                 ))}
               </ul>
               <a
-                href="https://x.com/SatsLegacy" target="_blank" rel="noopener noreferrer"
-                className="block w-full py-3 text-center bg-zinc-700 text-white rounded-lg hover:bg-zinc-600 transition-colors"
+                href="https://pay.satslegacy.io/apps/2L3STy2vfnfXfJrNk2CFANmDM1fw/pos/form"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full py-3 text-center bg-orange-500 text-black font-semibold rounded-lg hover:bg-orange-600 transition-colors"
               >
-                Join Waitlist
+                Buy with Bitcoin
               </a>
             </div>
 
@@ -310,13 +291,19 @@ const LandingPage = ({ onEnterApp }) => {
                 ))}
               </ul>
               <a
-                href="https://x.com/SatsLegacy" target="_blank" rel="noopener noreferrer"
+                href="https://pay.satslegacy.io/apps/2L3STy2vfnfXfJrNk2CFANmDM1fw/pos/form"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="block w-full py-3 text-center bg-gradient-to-r from-orange-500 to-orange-600 text-black font-semibold rounded-lg hover:opacity-90 transition-opacity"
               >
-                Join Waitlist
+                Buy with Bitcoin
               </a>
             </div>
           </div>
+
+          <p className="text-center text-zinc-500 mt-8">
+            Download free and upgrade anytime from within the app.
+          </p>
         </div>
       </section>
 
