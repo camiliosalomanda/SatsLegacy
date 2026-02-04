@@ -115,7 +115,7 @@ export class RelayConnection {
   private url: string
   private subscriptions: Map<string, (event: NostrEvent) => void> = new Map()
   private pendingRequests: Map<string, {
-    resolve: (value: any) => void
+    resolve: (value: NostrEvent | NostrEvent[] | null) => void
     reject: (error: Error) => void
     timeout: ReturnType<typeof setTimeout>
   }> = new Map()

@@ -110,7 +110,7 @@ function buildScriptConfig(config: VaultAddressConfig): VaultScriptConfig {
       estimatedDate: new Date(Date.now() + (config.inactivityTrigger || 365) * 24 * 60 * 60 * 1000)
     }],
     logic: config.logic.primary,
-    additionalGates: (config.logic.gates || []) as any[],
+    additionalGates: config.logic.gates || [],
   };
 }
 

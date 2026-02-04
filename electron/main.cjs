@@ -351,21 +351,57 @@ function decrypt(encryptedData, password) {
 // VAULT OPERATIONS
 // ============================================
 
+// Validate vault metadata structure to prevent crashes from malformed data
+function validateVaultMeta(meta) {
+  if (!meta || typeof meta !== 'object') return false;
+  if (typeof meta.vault_id !== 'string' || meta.vault_id.length === 0) return false;
+  if (typeof meta.name !== 'string') return false;
+  // Other fields are optional but should be correct types if present
+  if (meta.beneficiaryCount !== undefined && typeof meta.beneficiaryCount !== 'number') return false;
+  if (meta.status !== undefined && typeof meta.status !== 'string') return false;
+  return true;
+}
+
+// Sanitize vault metadata to prevent XSS in renderer
+function sanitizeVaultMeta(meta) {
+  return {
+    vault_id: String(meta.vault_id || ''),
+    name: String(meta.name || 'Unnamed Vault').slice(0, 255),
+    description: String(meta.description || '').slice(0, 1000),
+    created_at: meta.created_at,
+    updated_at: meta.updated_at,
+    logic: meta.logic,
+    status: String(meta.status || 'pending'),
+    beneficiaryCount: Number(meta.beneficiaryCount) || 0,
+    hasOwnerKey: Boolean(meta.hasOwnerKey),
+    hasAddress: Boolean(meta.hasAddress)
+  };
+}
+
 ipcMain.handle('vault:list', async () => {
   try {
     const files = fs.readdirSync(VAULTS_PATH);
     const vaults = [];
-    
+
     for (const file of files) {
       if (file.endsWith('.vault')) {
         const metaPath = path.join(VAULTS_PATH, file.replace('.vault', '.meta'));
         if (fs.existsSync(metaPath)) {
-          const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
-          vaults.push(meta);
+          try {
+            const rawMeta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+            if (validateVaultMeta(rawMeta)) {
+              vaults.push(sanitizeVaultMeta(rawMeta));
+            } else {
+              console.warn(`[vault:list] Skipping invalid metadata: ${file}`);
+            }
+          } catch (parseError) {
+            console.error(`[vault:list] Failed to parse ${file}:`, parseError.message);
+            // Skip malformed files instead of crashing
+          }
         }
       }
     }
-    
+
     return { success: true, vaults };
   } catch (error) {
     return { success: false, error: error.message };
@@ -1367,6 +1403,16 @@ ipcMain.handle('system:getAppInfo', async () => {
 const EMAIL_API_GATEWAY = 'https://vercel-api-gateway-gules.vercel.app/api/resend';
 const EMAIL_APP_SECRET = '22b0d350f5b480d1dd44b957c846a51c5cb4b4db2a32a3006d36f5620a58b554';
 
+// Email validation
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_EMAIL_LENGTH = 254;
+
+function isValidEmail(email) {
+  if (!email || typeof email !== 'string') return false;
+  if (email.length > MAX_EMAIL_LENGTH) return false;
+  return EMAIL_REGEX.test(email);
+}
+
 // Email rate limiting - prevent spam
 const emailRateLimit = new Map(); // email -> { count, windowStart }
 const EMAIL_RATE_LIMIT = 3;        // Max emails per window
@@ -1421,6 +1467,11 @@ async function sendEmailViaProxy({ from, to, subject, html, text }) {
 
 ipcMain.handle('notifications:sendCheckInReminder', async (event, { toEmail, vaultName, daysRemaining, status }) => {
   try {
+    // Validate email format
+    if (!isValidEmail(toEmail)) {
+      return { success: false, error: 'Invalid email address format' };
+    }
+
     // Check email rate limit
     const rateCheck = checkEmailRateLimit(toEmail);
     if (!rateCheck.allowed) {
@@ -1436,18 +1487,21 @@ ipcMain.handle('notifications:sendCheckInReminder', async (event, { toEmail, vau
     const fromEmail = settings.notifications?.fromEmail || 'notifications@satslegacy.io';
     const urgencyColor = status === 'critical' ? '#ef4444' : status === 'expired' ? '#dc2626' : '#eab308';
 
+    // Sanitize vault name to prevent injection
+    const sanitizedVaultName = String(vaultName || 'Vault').slice(0, 100);
+
     const subject = status === 'expired'
-      ? `⚠️ SatsLegacy: Check-In Expired for "${vaultName}"`
+      ? `SatsLegacy: Check-In Expired for "${sanitizedVaultName}"`
       : status === 'critical'
-      ? `🚨 URGENT: Check-In Required for "${vaultName}" (${daysRemaining} days)`
-      : `⏰ SatsLegacy: Check-In Reminder for "${vaultName}" (${daysRemaining} days)`;
+      ? `URGENT: Check-In Required for "${sanitizedVaultName}" (${daysRemaining} days)`
+      : `SatsLegacy: Check-In Reminder for "${sanitizedVaultName}" (${daysRemaining} days)`;
 
     return await sendEmailViaProxy({
       from: `SatsLegacy <${fromEmail}>`,
       to: toEmail,
       subject,
-      html: generateCheckInHtml(vaultName, daysRemaining, status, urgencyColor),
-      text: generateCheckInText(vaultName, daysRemaining, status)
+      html: generateCheckInHtml(sanitizedVaultName, daysRemaining, status, urgencyColor),
+      text: generateCheckInText(sanitizedVaultName, daysRemaining, status)
     });
   } catch (error) {
     return { success: false, error: error.message };
@@ -1456,6 +1510,11 @@ ipcMain.handle('notifications:sendCheckInReminder', async (event, { toEmail, vau
 
 ipcMain.handle('notifications:sendHeirNotification', async (event, { toEmail, vaultName, ownerName }) => {
   try {
+    // Validate email format
+    if (!isValidEmail(toEmail)) {
+      return { success: false, error: 'Invalid email address format' };
+    }
+
     // Check email rate limit
     const rateCheck = checkEmailRateLimit(toEmail);
     if (!rateCheck.allowed) {
@@ -1483,6 +1542,11 @@ ipcMain.handle('notifications:sendHeirNotification', async (event, { toEmail, va
 
 ipcMain.handle('notifications:testEmail', async (event, { toEmail }) => {
   try {
+    // Validate email format
+    if (!isValidEmail(toEmail)) {
+      return { success: false, error: 'Invalid email address format' };
+    }
+
     // Check email rate limit
     const rateCheck = checkEmailRateLimit(toEmail);
     if (!rateCheck.allowed) {

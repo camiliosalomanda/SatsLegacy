@@ -1,10 +1,11 @@
 /**
  * BitTrust Electron Hook
- * 
+ *
  * Provides access to Electron APIs with fallback for web.
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import type { Vault, PendingVaultData } from '../types/vault';
 
 // Check if running in Electron
 const isElectron = typeof window !== 'undefined' && window.isElectron;
@@ -21,6 +22,17 @@ interface VaultMeta {
   updated_at: string;
   infrastructure: string[];
   logic: { primary: string; gates: string[] };
+}
+
+// Type for vault data when creating/updating (before it has an id assigned)
+type VaultInput = Partial<Vault> | PendingVaultData;
+
+// Type for encrypted vault data from import
+interface EncryptedVaultData {
+  salt: string;
+  iv: string;
+  authTag: string;
+  data: string;
 }
 
 interface LicenseInfo {
@@ -100,52 +112,52 @@ export function useBitTrustElectron() {
     return result.success ? result.vaults : [];
   }, []);
 
-  const createVault = useCallback(async (vault: any, password: string): Promise<{ success: boolean; vaultId?: string; error?: string }> => {
+  const createVault = useCallback(async (vault: VaultInput, password: string): Promise<{ success: boolean; vaultId?: string; error?: string }> => {
     if (!isElectron) {
       // Web fallback
       const vaultId = crypto.randomUUID();
-      const vaults = JSON.parse(localStorage.getItem('bittrust:vaults') || '[]');
-      vaults.push({ ...vault, vault_id: vaultId });
+      const vaults: VaultMeta[] = JSON.parse(localStorage.getItem('bittrust:vaults') || '[]');
+      vaults.push({ ...vault, vault_id: vaultId } as VaultMeta);
       localStorage.setItem('bittrust:vaults', JSON.stringify(vaults));
       return { success: true, vaultId };
     }
-    
+
     return api.vault.create(vault, password);
   }, []);
 
-  const loadVault = useCallback(async (vaultId: string, password: string): Promise<{ success: boolean; vault?: any; error?: string }> => {
+  const loadVault = useCallback(async (vaultId: string, password: string): Promise<{ success: boolean; vault?: Vault; error?: string }> => {
     if (!isElectron) {
-      const vaults = JSON.parse(localStorage.getItem('bittrust:vaults') || '[]');
-      const vault = vaults.find((v: any) => v.vault_id === vaultId);
+      const vaults: Vault[] = JSON.parse(localStorage.getItem('bittrust:vaults') || '[]');
+      const vault = vaults.find((v) => v.vault_id === vaultId);
       return vault ? { success: true, vault } : { success: false, error: 'Vault not found' };
     }
-    
+
     return api.vault.load(vaultId, password);
   }, []);
 
-  const updateVault = useCallback(async (vaultId: string, vault: any, password: string): Promise<{ success: boolean; error?: string }> => {
+  const updateVault = useCallback(async (vaultId: string, vault: VaultInput, password: string): Promise<{ success: boolean; error?: string }> => {
     if (!isElectron) {
-      const vaults = JSON.parse(localStorage.getItem('bittrust:vaults') || '[]');
-      const index = vaults.findIndex((v: any) => v.vault_id === vaultId);
+      const vaults: VaultMeta[] = JSON.parse(localStorage.getItem('bittrust:vaults') || '[]');
+      const index = vaults.findIndex((v) => v.vault_id === vaultId);
       if (index >= 0) {
-        vaults[index] = { ...vault, vault_id: vaultId };
+        vaults[index] = { ...vault, vault_id: vaultId } as VaultMeta;
         localStorage.setItem('bittrust:vaults', JSON.stringify(vaults));
         return { success: true };
       }
       return { success: false, error: 'Vault not found' };
     }
-    
+
     return api.vault.update(vaultId, vault, password);
   }, []);
 
   const deleteVault = useCallback(async (vaultId: string): Promise<{ success: boolean; error?: string }> => {
     if (!isElectron) {
-      const vaults = JSON.parse(localStorage.getItem('bittrust:vaults') || '[]');
-      const filtered = vaults.filter((v: any) => v.vault_id !== vaultId);
+      const vaults: VaultMeta[] = JSON.parse(localStorage.getItem('bittrust:vaults') || '[]');
+      const filtered = vaults.filter((v) => v.vault_id !== vaultId);
       localStorage.setItem('bittrust:vaults', JSON.stringify(filtered));
       return { success: true };
     }
-    
+
     return api.vault.delete(vaultId);
   }, []);
 
@@ -157,11 +169,11 @@ export function useBitTrustElectron() {
     return api.vault.export(vaultId, password);
   }, []);
 
-  const importVault = useCallback(async (): Promise<{ success: boolean; encrypted?: any; error?: string }> => {
+  const importVault = useCallback(async (): Promise<{ success: boolean; encrypted?: EncryptedVaultData; error?: string }> => {
     if (!isElectron) {
       return { success: false, error: 'Import only available in desktop app' };
     }
-    
+
     return api.vault.import();
   }, []);
 
