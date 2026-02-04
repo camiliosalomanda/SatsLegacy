@@ -14,12 +14,12 @@ import {
 const LandingPage = ({ onEnterApp }) => {
   const [showAllFeatures, setShowAllFeatures] = useState(false);
 
-  const DOWNLOAD_URL_WINDOWS = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.2/SatsLegacy.Setup.1.5.2.exe';
-  const DOWNLOAD_URL_WINDOWS_PORTABLE = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.2/SatsLegacy.1.5.2.exe';
-  const DOWNLOAD_URL_MAC = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.2/SatsLegacy-1.5.2-arm64.dmg';
-  const DOWNLOAD_URL_MAC_INTEL = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.2/SatsLegacy-1.5.2.dmg';
-  const DOWNLOAD_URL_LINUX = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.2/SatsLegacy-1.5.2.AppImage';
-  const DOWNLOAD_URL_LINUX_DEB = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.2/SatsLegacy_1.5.2_amd64.deb';
+  const DOWNLOAD_URL_WINDOWS = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.3/SatsLegacy.Setup.1.5.3.exe';
+  const DOWNLOAD_URL_WINDOWS_PORTABLE = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.3/SatsLegacy.1.5.3.exe';
+  const DOWNLOAD_URL_MAC = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.3/SatsLegacy-1.5.3-arm64.dmg';
+  const DOWNLOAD_URL_MAC_INTEL = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.3/SatsLegacy-1.5.3.dmg';
+  const DOWNLOAD_URL_LINUX = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.3/SatsLegacy-1.5.3.AppImage';
+  const DOWNLOAD_URL_LINUX_DEB = 'https://github.com/camiliosalomanda/SatsLegacy/releases/download/v1.5.3/SatsLegacy_1.5.3_amd64.deb';
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
