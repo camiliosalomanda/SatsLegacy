@@ -9,6 +9,19 @@ import { useSettings } from './SettingsContext';
 const isElectron = typeof window !== 'undefined' && window.isElectron;
 const electronAPI = typeof window !== 'undefined' ? window.electronAPI : null;
 
+// Helper to get the canonical vault ID (handles id/vault_id confusion)
+function getVaultId(vault: Vault | { id?: string; vault_id?: string }): string {
+  return vault.vault_id || vault.id || '';
+}
+
+// Helper to check if two vaults have the same ID
+function isSameVault(a: Vault | null, b: Vault | { id?: string; vault_id?: string }): boolean {
+  if (!a) return false;
+  const aId = getVaultId(a);
+  const bId = getVaultId(b);
+  return aId !== '' && aId === bId;
+}
+
 interface VaultContextValue {
   // State
   vaults: Vault[];
@@ -265,7 +278,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       try {
         const result = await electronAPI.vault.delete(vaultId);
         if (result.success) {
-          setVaults(prev => prev.filter(v => v.id !== vaultId && v.vault_id !== vaultId));
+          setVaults(prev => prev.filter(v => getVaultId(v) !== vaultId));
           setSelectedVault(null);
         } else {
           throw new Error(result.error);
@@ -285,7 +298,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 
     try {
       const result = await electronAPI.vault.update(
-        selectedVault.vault_id || selectedVault.id,
+        getVaultId(selectedVault),
         selectedVault,
         password
       );
@@ -304,7 +317,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     if (!selectedVault || !isElectron || !electronAPI) return;
 
     try {
-      const result = await electronAPI.vault.export(selectedVault.vault_id || selectedVault.id, password);
+      const result = await electronAPI.vault.export(getVaultId(selectedVault), password);
       if (!result.success) {
         throw new Error(result.error);
       }
@@ -375,7 +388,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       witnessScript: scriptResult?.witnessScript || selectedVault.witnessScript
     };
     setVaults(prev => prev.map(v =>
-      (v.id === selectedVault.id || v.vault_id === selectedVault.vault_id) ? updatedVault : v
+      isSameVault(selectedVault, v) ? updatedVault : v
     ));
     setSelectedVault(updatedVault);
     setHasUnsavedChanges(true);
@@ -397,7 +410,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       witnessScript: scriptResult?.witnessScript || selectedVault.witnessScript
     };
     setVaults(prev => prev.map(v =>
-      (v.id === selectedVault.id || v.vault_id === selectedVault.vault_id) ? updatedVault : v
+      isSameVault(selectedVault, v) ? updatedVault : v
     ));
     setSelectedVault(updatedVault);
     setHasUnsavedChanges(true);
@@ -417,7 +430,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       witnessScript: scriptResult?.witnessScript
     };
     setVaults(prev => prev.map(v =>
-      (v.id === selectedVault.id || v.vault_id === selectedVault.vault_id) ? updatedVault : v
+      isSameVault(selectedVault, v) ? updatedVault : v
     ));
     setSelectedVault(updatedVault);
     setHasUnsavedChanges(true);
@@ -437,7 +450,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       witnessScript: scriptResult?.witnessScript || selectedVault.witnessScript
     };
     setVaults(prev => prev.map(v =>
-      (v.id === selectedVault.id || v.vault_id === selectedVault.vault_id) ? updatedVault : v
+      isSameVault(selectedVault, v) ? updatedVault : v
     ));
     setSelectedVault(updatedVault);
     setHasUnsavedChanges(true);
@@ -458,7 +471,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     }
 
     setVaults(prev => prev.map(v =>
-      (v.id === selectedVault.id || v.vault_id === selectedVault.vault_id) ? updatedVault : v
+      isSameVault(selectedVault, v) ? updatedVault : v
     ));
     setSelectedVault(updatedVault);
     setHasUnsavedChanges(true);

@@ -234,17 +234,17 @@ const DocsPage = ({ onNavigate }) => {
           <h2 className="text-2xl font-bold mb-4">Ready to secure your legacy?</h2>
           <p className="text-zinc-400 mb-8">Download SatsLegacy and create your first inheritance vault.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a 
-              href="#/"
+            <a
+              href="#/docs/installation"
               className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-black font-semibold rounded-lg hover:opacity-90 transition-opacity"
             >
               Download SatsLegacy
             </a>
-            <a 
-              href="#/"
+            <a
+              href="#/docs/quick-start"
               className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-zinc-800 text-white font-semibold rounded-lg hover:bg-zinc-700 transition-colors"
             >
-              Try Web Demo
+              Quick Start Guide
             </a>
           </div>
         </div>

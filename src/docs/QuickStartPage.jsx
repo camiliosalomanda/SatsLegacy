@@ -81,8 +81,8 @@ const QuickStartPage = () => {
               <p className="text-zinc-400 mb-4">
                 Download the SatsLegacy desktop application for your operating system. The app runs entirely locally — no data ever leaves your machine.
               </p>
-              <a 
-                href="#/download" 
+              <a
+                href="#/docs/installation"
                 className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-black px-4 py-2 rounded-lg font-medium transition-colors"
               >
                 <Download size={18} />

@@ -28,6 +28,43 @@ const APP_DATA_PATH = path.join(app.getPath('userData'), 'SatsLegacy');
 const VAULTS_PATH = path.join(APP_DATA_PATH, 'vaults');
 const LICENSE_PATH = path.join(APP_DATA_PATH, 'license.json');
 const SETTINGS_PATH = path.join(APP_DATA_PATH, 'settings.json');
+const AUDIT_LOG_PATH = path.join(APP_DATA_PATH, 'audit.log');
+
+// ============================================
+// AUDIT LOGGING
+// ============================================
+
+// Log security-relevant events for forensic analysis
+// Events: vault_create, vault_load, vault_delete, license_activate, duress_triggered, etc.
+const MAX_AUDIT_LOG_SIZE = 1024 * 1024; // 1MB max log size
+
+function auditLog(event, details = {}) {
+  try {
+    const entry = {
+      timestamp: new Date().toISOString(),
+      event,
+      ...details
+    };
+
+    const logLine = JSON.stringify(entry) + '\n';
+
+    // Rotate log if too large
+    if (fs.existsSync(AUDIT_LOG_PATH)) {
+      const stat = fs.statSync(AUDIT_LOG_PATH);
+      if (stat.size > MAX_AUDIT_LOG_SIZE) {
+        // Keep last half of log
+        const content = fs.readFileSync(AUDIT_LOG_PATH, 'utf8');
+        const lines = content.split('\n');
+        const halfLines = lines.slice(Math.floor(lines.length / 2));
+        fs.writeFileSync(AUDIT_LOG_PATH, halfLines.join('\n'));
+      }
+    }
+
+    fs.appendFileSync(AUDIT_LOG_PATH, logLine);
+  } catch (error) {
+    console.error('[Audit] Failed to write log:', error.message);
+  }
+}
 
 // ============================================
 // RATE LIMITING (Brute Force Protection)
@@ -366,8 +403,16 @@ ipcMain.handle('vault:create', async (event, { vault, password }) => {
     };
     fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2));
 
+    auditLog('vault_create', {
+      vaultId: vaultId.slice(0, 8) + '...',
+      name: vault.name,
+      logic: vault.logic?.primary,
+      beneficiaryCount: (vault.beneficiaries || []).length
+    });
+
     return { success: true, vaultId };
   } catch (error) {
+    auditLog('vault_create_failed', { error: error.message });
     return { success: false, error: error.message };
   }
 });
@@ -396,10 +441,15 @@ ipcMain.handle('vault:load', async (event, { vaultId, password }) => {
       const vault = decrypt(encrypted, password);
       // Success - clear failed attempts
       clearFailedAttempts(vaultId);
+      auditLog('vault_load', { vaultId: vaultId.slice(0, 8) + '...' });
       return { success: true, vault };
     } catch (decryptError) {
       // Failed decryption - record failed attempt
       recordFailedAttempt(vaultId);
+      auditLog('vault_load_failed', {
+        vaultId: vaultId.slice(0, 8) + '...',
+        reason: 'invalid_password'
+      });
       return { success: false, error: 'Invalid password or corrupted vault' };
     }
   } catch (error) {
@@ -453,8 +503,11 @@ ipcMain.handle('vault:delete', async (event, { vaultId }) => {
     if (fs.existsSync(vaultPath)) fs.unlinkSync(vaultPath);
     if (fs.existsSync(metaPath)) fs.unlinkSync(metaPath);
 
+    auditLog('vault_delete', { vaultId: vaultId.slice(0, 8) + '...' });
+
     return { success: true };
   } catch (error) {
+    auditLog('vault_delete_failed', { vaultId: vaultId.slice(0, 8) + '...', error: error.message });
     return { success: false, error: error.message };
   }
 });
@@ -570,13 +623,20 @@ ipcMain.handle('license:activate', async (event, { licenseKey }) => {
     license.activated_at = new Date().toISOString();
     license.machine_id = getMachineId();
     fs.writeFileSync(LICENSE_PATH, JSON.stringify(license, null, 2));
-    
-    return { 
-      success: true, 
+
+    auditLog('license_activate', {
+      tier: license.tier,
+      email: license.email,
+      machineId: license.machine_id
+    });
+
+    return {
+      success: true,
       tier: license.tier,
       vault_limit: license.tier === 'pro' ? Infinity : 10
     };
   } catch (error) {
+    auditLog('license_activate_failed', { error: error.message });
     return { success: false, error: error.message };
   }
 });
@@ -786,6 +846,13 @@ ipcMain.handle('duress:checkPassword', async (event, { password }) => {
     const isDuress = testBuffer.length === storedBuffer.length &&
                      crypto.timingSafeEqual(testBuffer, storedBuffer);
 
+    if (isDuress) {
+      auditLog('duress_triggered', {
+        action: settings.duress.action,
+        silentAlert: settings.duress.silentAlert
+      });
+    }
+
     return { success: true, isDuress };
   } catch (error) {
     return { success: false, error: error.message, isDuress: false };
@@ -889,11 +956,46 @@ ipcMain.handle('duress:deleteDecoyVault', async (event, { vaultId }) => {
   }
 });
 
+// Secure file deletion with multi-pass overwrite
+// Note: On SSDs, this provides limited protection due to wear leveling
+// For true security on SSDs, full-disk encryption is recommended
+const MAX_WIPE_FILE_SIZE = 10 * 1024 * 1024; // 10MB max to prevent OOM
+
+function secureDeleteFile(filePath) {
+  const stat = fs.statSync(filePath);
+  const fileSize = Math.min(stat.size, MAX_WIPE_FILE_SIZE);
+
+  // 3-pass overwrite: zeros, ones, random (based on DoD 5220.22-M)
+  // Pass 1: Overwrite with zeros
+  const zeros = Buffer.alloc(fileSize, 0x00);
+  fs.writeFileSync(filePath, zeros);
+
+  // Pass 2: Overwrite with ones
+  const ones = Buffer.alloc(fileSize, 0xFF);
+  fs.writeFileSync(filePath, ones);
+
+  // Pass 3: Overwrite with random data
+  const randomData = crypto.randomBytes(fileSize);
+  fs.writeFileSync(filePath, randomData);
+
+  // Truncate to zero length
+  fs.truncateSync(filePath, 0);
+
+  // Delete the file
+  fs.unlinkSync(filePath);
+
+  // Verify deletion
+  if (fs.existsSync(filePath)) {
+    throw new Error(`Failed to delete file: ${path.basename(filePath)}`);
+  }
+}
+
 // Execute duress action (wipe real vaults)
 ipcMain.handle('duress:executeWipe', async () => {
   try {
     // Securely delete all real vault files
     const files = fs.readdirSync(VAULTS_PATH);
+    const errors = [];
 
     for (const file of files) {
       const filePath = path.join(VAULTS_PATH, file);
@@ -905,17 +1007,24 @@ ipcMain.handle('duress:executeWipe', async () => {
       const stat = fs.statSync(filePath);
       if (!stat.isFile()) continue;
 
-      // Overwrite with random data before deleting (secure wipe)
-      const fileSize = stat.size;
-      const randomData = crypto.randomBytes(fileSize);
-      fs.writeFileSync(filePath, randomData);
-
-      // Delete file
-      fs.unlinkSync(filePath);
+      try {
+        secureDeleteFile(filePath);
+        console.log(`[Duress] Securely deleted: ${file}`);
+      } catch (fileError) {
+        console.error(`[Duress] Failed to delete ${file}:`, fileError.message);
+        errors.push(file);
+      }
     }
 
+    if (errors.length > 0) {
+      auditLog('duress_wipe_partial', { errors });
+      return { success: false, error: `Failed to delete some files: ${errors.join(', ')}` };
+    }
+
+    auditLog('duress_wipe_complete', { filesDeleted: files.length - errors.length });
     return { success: true };
   } catch (error) {
+    auditLog('duress_wipe_failed', { error: error.message });
     return { success: false, error: error.message };
   }
 });
