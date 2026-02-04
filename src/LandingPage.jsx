@@ -264,14 +264,11 @@ const LandingPage = ({ onEnterApp }) => {
                   </li>
                 ))}
               </ul>
-              <a
-                href="https://pay.satslegacy.io/apps/2L3STy2vfnfXfJrNk2CFANmDM1fw/pos/form"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block w-full py-3 text-center bg-orange-500 text-black font-semibold rounded-lg hover:bg-orange-600 transition-colors"
+              <span
+                className="block w-full py-3 text-center bg-zinc-700 text-zinc-400 rounded-lg cursor-not-allowed"
               >
-                Buy with Bitcoin
-              </a>
+                Coming Soon
+              </span>
             </div>
 
             {/* Pro */}
@@ -290,14 +287,11 @@ const LandingPage = ({ onEnterApp }) => {
                   </li>
                 ))}
               </ul>
-              <a
-                href="https://pay.satslegacy.io/apps/2L3STy2vfnfXfJrNk2CFANmDM1fw/pos/form"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block w-full py-3 text-center bg-gradient-to-r from-orange-500 to-orange-600 text-black font-semibold rounded-lg hover:opacity-90 transition-opacity"
+              <span
+                className="block w-full py-3 text-center bg-zinc-700 text-zinc-400 rounded-lg cursor-not-allowed"
               >
-                Buy with Bitcoin
-              </a>
+                Coming Soon
+              </span>
             </div>
           </div>
 
