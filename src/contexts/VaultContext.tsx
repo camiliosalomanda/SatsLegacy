@@ -3,6 +3,7 @@ import type { Vault, Beneficiary, PendingVaultData } from '../types/vault';
 import type { NetworkType } from '../types/settings';
 import { fetchAddressBalance } from '../utils/api/blockchain';
 import { generateVaultAddress } from '../vault/scripts/bitcoin-address';
+import { useSettings } from './SettingsContext';
 
 // Check if running in Electron
 const isElectron = typeof window !== 'undefined' && window.isElectron;
@@ -52,6 +53,7 @@ interface VaultContextValue {
 const VaultContext = createContext<VaultContextValue | null>(null);
 
 export function VaultProvider({ children }: { children: ReactNode }) {
+  const { settings } = useSettings();
   const [vaults, setVaults] = useState<Vault[]>([]);
   const [selectedVault, setSelectedVault] = useState<Vault | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -330,10 +332,14 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 
   // Helper to generate vault address when keys are available
   // Returns { address, witnessScript } or null if can't generate
-  const tryGenerateVaultScript = useCallback((vault: Vault, network: 'mainnet' | 'testnet' | 'signet' = 'testnet'): { address: string; witnessScript?: string } | null => {
+  // Uses network from settings context
+  const tryGenerateVaultScript = useCallback((vault: Vault): { address: string; witnessScript?: string } | null => {
     if (!vault.ownerPubkey || vault.beneficiaries.length === 0) {
       return null;
     }
+
+    // Get network from settings, default to mainnet
+    const network = settings.network || 'mainnet';
 
     try {
       const heirPubkeys = vault.beneficiaries.map(b => b.pubkey);
@@ -353,7 +359,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       console.error('[tryGenerateVaultScript] Failed:', e);
       return null;
     }
-  }, []);
+  }, [settings.network]);
 
   const addBeneficiary = useCallback((beneficiary: Beneficiary) => {
     if (!selectedVault) return;
