@@ -611,7 +611,7 @@ ipcMain.handle('vault:import', async (event) => {
 // ============================================
 
 // BTCPay Server Ed25519 public key (replace with your actual key)
-const BTCPAY_PUBLIC_KEY = '302a300506032b657003210051f73ef4fb18534c9fd11d3a98cde137313c52b771a141a6b11e1a13ae1afe18';
+const BTCPAY_PUBLIC_KEY = '302a300506032b65700321002095e9b088b628cf3d00da895b57eb7d6063b7ea7bc8febdd00939b98b4a6b9b';
 
 ipcMain.handle('license:check', async () => {
   try {
