@@ -2150,7 +2150,9 @@ Declarant Signature`
           licenseInfo={licenseInfo}
           onUpgrade={() => {
             setShowCreateWizard(false);
-            setCurrentView('settings');
+            if (window.electronAPI?.license?.purchase) {
+              window.electronAPI.license.purchase('pro');
+            }
           }}
         />
       )}

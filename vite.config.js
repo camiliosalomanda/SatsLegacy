@@ -11,5 +11,21 @@ export default defineConfig({
     watch: {
       ignored: ['**/release/**', '**/node_modules/**']
     }
+  },
+  define: {
+    global: 'globalThis',
+  },
+  resolve: {
+    alias: {
+      buffer: 'buffer/'
+    }
+  },
+  optimizeDeps: {
+    include: ['buffer'],
+    esbuildOptions: {
+      define: {
+        global: 'globalThis'
+      }
+    }
   }
 })
