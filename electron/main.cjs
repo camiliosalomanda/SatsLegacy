@@ -690,7 +690,9 @@ ipcMain.handle('license:purchase', async (event, { tier }) => {
 function decodeLicenseKey(key) {
   try {
     // License format: base64(JSON({ tier, email, issued_at, signature }))
-    const decoded = Buffer.from(key, 'base64').toString('utf8');
+    // Remove dashes if present (license keys are formatted with dashes for readability)
+    const cleaned = key.replace(/-/g, '');
+    const decoded = Buffer.from(cleaned, 'base64').toString('utf8');
     return JSON.parse(decoded);
   } catch {
     return null;

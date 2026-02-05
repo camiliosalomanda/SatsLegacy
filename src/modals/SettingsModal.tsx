@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Bell, Mail, Loader2, Check, AlertCircle, Shield, AlertTriangle, Eye, EyeOff, Trash2, Globe, Wifi, WifiOff } from 'lucide-react';
+import { X, Bell, Mail, Loader2, Check, AlertCircle, Shield, AlertTriangle, Eye, EyeOff, Trash2, Globe, Wifi, WifiOff, Key } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
 import { useUI } from '../contexts/UIContext';
 import type { DuressAction, TorSettings } from '../types/settings';
@@ -17,6 +17,11 @@ export function SettingsModal() {
   const [testingTor, setTestingTor] = useState(false);
   const [torTestResult, setTorTestResult] = useState<{ success: boolean; message: string; ip?: string } | null>(null);
   const [showTorConfig, setShowTorConfig] = useState(false);
+
+  // License activation state
+  const [licenseKey, setLicenseKey] = useState('');
+  const [activatingLicense, setActivatingLicense] = useState(false);
+  const [licenseResult, setLicenseResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // Duress protection state
   const [showDuressSetup, setShowDuressSetup] = useState(false);
@@ -170,6 +175,30 @@ export function SettingsModal() {
       setDuressError('Failed to set duress password');
     } finally {
       setSavingDuress(false);
+    }
+  };
+
+  const handleActivateLicense = async () => {
+    if (!licenseKey.trim()) {
+      setLicenseResult({ success: false, message: 'Please enter a license key' });
+      return;
+    }
+    setActivatingLicense(true);
+    setLicenseResult(null);
+    try {
+      const result = await electronAPI?.license.activate(licenseKey.trim());
+      if (result?.success) {
+        setLicenseResult({ success: true, message: `License activated! Tier: ${result.tier}` });
+        setLicenseKey('');
+        // Refresh page to update license info
+        window.location.reload();
+      } else {
+        setLicenseResult({ success: false, message: result?.error || 'Invalid license key' });
+      }
+    } catch {
+      setLicenseResult({ success: false, message: 'Failed to activate license' });
+    } finally {
+      setActivatingLicense(false);
     }
   };
 
@@ -671,13 +700,49 @@ export function SettingsModal() {
                 </div>
               )}
               {!licenseInfo.licensed && (
-                <div className="mt-3">
+                <div className="mt-3 space-y-3">
+                  <div>
+                    <label className="block text-sm text-zinc-400 mb-2">
+                      <Key size={14} className="inline mr-1" />
+                      License Key
+                    </label>
+                    <input
+                      type="text"
+                      value={licenseKey}
+                      onChange={(e) => setLicenseKey(e.target.value)}
+                      placeholder="Paste your license key here"
+                      className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white font-mono text-sm focus:outline-none focus:border-orange-500"
+                    />
+                  </div>
                   <button
-                    onClick={() => electronAPI?.license.purchase('standard')}
-                    className="w-full py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-black font-medium rounded-lg hover:opacity-90 transition-opacity"
+                    onClick={handleActivateLicense}
+                    disabled={activatingLicense || !licenseKey.trim()}
+                    className="w-full py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-black font-medium rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    Upgrade Now
+                    {activatingLicense ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        Activating...
+                      </>
+                    ) : (
+                      'Activate License'
+                    )}
                   </button>
+                  {licenseResult && (
+                    <div className={`flex items-center gap-2 text-sm ${licenseResult.success ? 'text-green-400' : 'text-red-400'}`}>
+                      {licenseResult.success ? <Check size={14} /> : <AlertCircle size={14} />}
+                      {licenseResult.message}
+                    </div>
+                  )}
+                  <div className="pt-2 border-t border-zinc-700">
+                    <p className="text-xs text-zinc-500 mb-2">Don't have a license?</p>
+                    <button
+                      onClick={() => electronAPI?.license.purchase('standard')}
+                      className="w-full py-2 bg-zinc-700 text-zinc-300 font-medium rounded-lg hover:bg-zinc-600 transition-colors"
+                    >
+                      Purchase License
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
