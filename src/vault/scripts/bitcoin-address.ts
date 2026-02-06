@@ -6,8 +6,13 @@
  */
 
 import * as bitcoin from 'bitcoinjs-lib';
+import BIP32Factory from 'bip32';
+import * as ecc from 'tiny-secp256k1';
 import bs58check from 'bs58check';
 import { Buffer } from 'buffer';
+
+// Initialize BIP32 with secp256k1
+const bip32 = BIP32Factory(ecc);
 
 // Network configurations
 const networks = {
@@ -26,6 +31,10 @@ function toHex(bytes: Uint8Array): string {
 /**
  * Convert an xpub/tpub to a hex-encoded public key
  *
+ * IMPORTANT: This derives the first receive address key (/0/0) from the xpub,
+ * NOT the account-level key. This ensures compatibility with standard wallet
+ * software like Sparrow, Electrum, etc. that can sign for derived addresses.
+ *
  * Extended public key format (78 bytes total after base58check decode):
  * - 4 bytes: version
  * - 1 byte: depth
@@ -33,19 +42,22 @@ function toHex(bytes: Uint8Array): string {
  * - 4 bytes: child index
  * - 32 bytes: chain code
  * - 33 bytes: public key
+ *
+ * @param xpub - The extended public key (xpub, tpub, etc.)
+ * @param derivePath - Derivation path from the xpub (default: "0/0" for first receive address)
+ * @returns Hex-encoded compressed public key
  */
-export function xpubToPublicKey(xpub: string): string {
+export function xpubToPublicKey(xpub: string, derivePath: string = '0/0'): string {
   try {
-    // Decode base58check - returns Uint8Array
-    const decoded = bs58check.decode(xpub);
+    // Parse the xpub using BIP32
+    const node = bip32.fromBase58(xpub);
 
-    // Validate length (78 bytes)
-    if (decoded.length !== 78) {
-      throw new Error(`Invalid xpub length: ${decoded.length}, expected 78`);
-    }
+    // Derive the child key at the specified path (e.g., /0/0 for first receive address)
+    // This makes the key compatible with standard wallet software
+    const childNode = node.derivePath(derivePath);
 
-    // Extract public key (last 33 bytes)
-    const publicKey = decoded.slice(45, 78);
+    // Get the compressed public key
+    const publicKey = childNode.publicKey;
 
     // Validate it's a compressed public key (starts with 02 or 03)
     if (publicKey[0] !== 0x02 && publicKey[0] !== 0x03) {
@@ -55,7 +67,19 @@ export function xpubToPublicKey(xpub: string): string {
     return toHex(publicKey);
   } catch (e) {
     console.error('Failed to parse xpub:', e);
-    throw new Error('Invalid extended public key format');
+    throw new Error('Invalid extended public key format. Make sure you\'re using a valid xpub/tpub.');
+  }
+}
+
+/**
+ * Get the master fingerprint from an xpub (for PSBT BIP32 derivation info)
+ */
+export function getXpubFingerprint(xpub: string): Buffer {
+  try {
+    const node = bip32.fromBase58(xpub);
+    return Buffer.from(node.fingerprint);
+  } catch {
+    return Buffer.alloc(4); // Return empty fingerprint on error
   }
 }
 

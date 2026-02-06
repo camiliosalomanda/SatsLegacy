@@ -32,6 +32,12 @@ export function PSBTExportModal({ vault }: PSBTExportModalProps) {
     setIsGenerating(true);
     setPsbtResult(null);
 
+    // Debug: Log vault witnessScript
+    console.log('[PSBTExportModal] Vault witnessScript:', vault.witnessScript);
+    console.log('[PSBTExportModal] Vault witnessScript length:', vault.witnessScript?.length);
+    console.log('[PSBTExportModal] Vault ownerPubkey:', vault.ownerPubkey);
+    console.log('[PSBTExportModal] Vault beneficiaries:', vault.beneficiaries?.map(b => b.pubkey));
+
     try {
       const result = await createSweepPsbt(
         vault,

@@ -7,6 +7,7 @@
  * - Heir claiming (after timelock)
  */
 
+import { Buffer } from 'buffer';
 import * as bitcoin from 'bitcoinjs-lib';
 import type { NetworkType } from '../../types/settings';
 import type { Vault } from '../../types/vault';
@@ -247,18 +248,28 @@ export async function createSweepPsbt(
     };
   }
 
-  // Build witness script if we have the keys
+  // Build witness script - prefer stored witnessScript from vault
   let witnessScript: Buffer | undefined;
   if (options.witnessScript) {
     witnessScript = Buffer.from(options.witnessScript, 'hex');
+  } else if (vault.witnessScript) {
+    // Use the stored witness script from vault creation
+    // Handle both hex string format and comma-separated number format (from IPC serialization)
+    if (typeof vault.witnessScript === 'string' && vault.witnessScript.includes(',')) {
+      // Comma-separated numbers format: "99,33,3,54,..."
+      const bytes = vault.witnessScript.split(',').map(n => parseInt(n.trim(), 10));
+      witnessScript = Buffer.from(bytes);
+    } else {
+      // Hex string format: "632103..."
+      witnessScript = Buffer.from(vault.witnessScript, 'hex');
+    }
   } else if (vault.ownerPubkey && vault.beneficiaries?.[0]?.pubkey) {
-    // Reconstruct witness script from vault data
-    // Extract locktime from lockDate (approximate block height)
-    const lockDate = new Date(vault.lockDate);
-    const now = new Date();
-    const daysUntilLock = Math.ceil((lockDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
-    const currentHeight = await fetchBlockHeight(network) || 880000;
-    const locktime = currentHeight + Math.max(0, daysUntilLock * 144);
+    // Fallback: Reconstruct witness script from vault data
+    // IMPORTANT: Use the same locktime formula as VaultContext/bitcoin-address.ts
+    // This converts lockDate to a locktime value that matches the original address generation
+    const locktime = vault.lockDate
+      ? Math.floor(new Date(vault.lockDate).getTime() / 1000 / 600) + 500000
+      : 880000 + 52560; // Default ~1 year from typical block height
 
     witnessScript = buildTimelockWitnessScript(
       vault.ownerPubkey,
@@ -285,7 +296,7 @@ export async function createSweepPsbt(
     // Fetch the raw transaction to get the full output script
     const rawTxHex = await fetchRawTransaction(utxo.txid, network);
 
-    const inputData: bitcoin.PsbtTxInput & { witnessUtxo?: { script: Buffer; value: number }; witnessScript?: Buffer } = {
+    const inputData: bitcoin.PsbtTxInput & { witnessUtxo?: { script: Uint8Array; value: bigint }; witnessScript?: Buffer } = {
       hash: utxo.txid,
       index: utxo.vout,
       sequence: isTimelockSpend ? 0xfffffffe : 0xffffffff, // Enable locktime for heir path
@@ -296,9 +307,23 @@ export async function createSweepPsbt(
       const tx = bitcoin.Transaction.fromHex(rawTxHex);
       const output = tx.outs[utxo.vout];
 
+      // Ensure script is a proper Uint8Array (bitcoinjs-lib v7 uses Uint8Array, not Buffer)
+      let scriptBytes: Uint8Array;
+      if (output.script instanceof Uint8Array) {
+        scriptBytes = output.script;
+      } else if (Buffer.isBuffer(output.script)) {
+        scriptBytes = new Uint8Array(output.script);
+      } else if (output.script && typeof output.script === 'object' && 'data' in output.script) {
+        // Handle serialized Buffer object {type: "Buffer", data: [...]}
+        scriptBytes = new Uint8Array((output.script as { data: number[] }).data);
+      } else {
+        // Handle plain object with numeric keys
+        scriptBytes = new Uint8Array(Object.values(output.script) as number[]);
+      }
+
       inputData.witnessUtxo = {
-        script: output.script,
-        value: utxo.value,
+        script: scriptBytes,
+        value: BigInt(utxo.value),
       };
     } else {
       // Fallback: construct P2WSH output script from witness script
@@ -309,7 +334,7 @@ export async function createSweepPsbt(
         });
         inputData.witnessUtxo = {
           script: p2wsh.output!,
-          value: utxo.value,
+          value: BigInt(utxo.value),
         };
       }
     }
@@ -325,7 +350,7 @@ export async function createSweepPsbt(
   // Add output
   psbt.addOutput({
     address: options.destinationAddress,
-    value: totalOutput,
+    value: BigInt(totalOutput),
   });
 
   // Return the unsigned PSBT
@@ -615,7 +640,13 @@ export async function createRefreshPsbt(
   if (options.newWitnessScript) {
     witnessScript = Buffer.from(options.newWitnessScript, 'hex');
   } else if (vault.witnessScript) {
-    witnessScript = Buffer.from(vault.witnessScript, 'hex');
+    // Handle both hex string format and comma-separated number format (from IPC serialization)
+    if (typeof vault.witnessScript === 'string' && vault.witnessScript.includes(',')) {
+      const bytes = vault.witnessScript.split(',').map(n => parseInt(n.trim(), 10));
+      witnessScript = Buffer.from(bytes);
+    } else {
+      witnessScript = Buffer.from(vault.witnessScript, 'hex');
+    }
   } else if (vault.ownerPubkey && vault.beneficiaries?.[0]?.pubkey && vault.sequence) {
     // Build CSV witness script from vault data
     witnessScript = buildDeadManSwitchWitnessScript(
@@ -632,7 +663,7 @@ export async function createRefreshPsbt(
   for (const utxo of utxos) {
     const rawTxHex = await fetchRawTransaction(utxo.txid, network);
 
-    const inputData: bitcoin.PsbtTxInput & { witnessUtxo?: { script: Buffer; value: number }; witnessScript?: Buffer } = {
+    const inputData: bitcoin.PsbtTxInput & { witnessUtxo?: { script: Uint8Array; value: bigint }; witnessScript?: Buffer } = {
       hash: utxo.txid,
       index: utxo.vout,
       sequence: 0xFFFFFFFF, // Owner path - no sequence restriction
@@ -641,9 +672,22 @@ export async function createRefreshPsbt(
     if (rawTxHex) {
       const tx = bitcoin.Transaction.fromHex(rawTxHex);
       const output = tx.outs[utxo.vout];
+      // Ensure script is a proper Uint8Array (bitcoinjs-lib v7 uses Uint8Array, not Buffer)
+      let scriptBytes: Uint8Array;
+      if (output.script instanceof Uint8Array) {
+        scriptBytes = output.script;
+      } else if (Buffer.isBuffer(output.script)) {
+        scriptBytes = new Uint8Array(output.script);
+      } else if (output.script && typeof output.script === 'object' && 'data' in output.script) {
+        // Handle serialized Buffer object {type: "Buffer", data: [...]}
+        scriptBytes = new Uint8Array((output.script as { data: number[] }).data);
+      } else {
+        // Handle plain object with numeric keys
+        scriptBytes = new Uint8Array(Object.values(output.script) as number[]);
+      }
       inputData.witnessUtxo = {
-        script: output.script,
-        value: utxo.value,
+        script: scriptBytes,
+        value: BigInt(utxo.value),
       };
     } else if (witnessScript) {
       const p2wsh = bitcoin.payments.p2wsh({
@@ -652,7 +696,7 @@ export async function createRefreshPsbt(
       });
       inputData.witnessUtxo = {
         script: p2wsh.output!,
-        value: utxo.value,
+        value: BigInt(utxo.value),
       };
     }
 
@@ -666,7 +710,7 @@ export async function createRefreshPsbt(
   // Add output - send back to vault (same or new address)
   psbt.addOutput({
     address: destinationAddress,
-    value: totalOutput,
+    value: BigInt(totalOutput),
   });
 
   return {

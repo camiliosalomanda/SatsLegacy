@@ -1,13 +1,18 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import wasm from 'vite-plugin-wasm'
+import topLevelAwait from 'vite-plugin-top-level-await'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), wasm(), topLevelAwait()],
   base: './',
   build: {
-    outDir: 'dist'
+    outDir: 'dist',
+    target: 'esnext'
   },
   server: {
+    port: 5173,
+    strictPort: true,
     watch: {
       ignored: ['**/release/**', '**/node_modules/**']
     }
@@ -21,7 +26,8 @@ export default defineConfig({
     }
   },
   optimizeDeps: {
-    include: ['buffer'],
+    include: ['buffer', 'react', 'react-dom', 'react-dom/client', 'lucide-react'],
+    exclude: ['tiny-secp256k1'],
     esbuildOptions: {
       define: {
         global: 'globalThis'

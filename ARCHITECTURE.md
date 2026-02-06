@@ -146,17 +146,17 @@ wrangler tail
 - **URL**: `https://github.com/camiliosalomanda/SatsLegacy/releases`
 - **Built By**: GitHub Actions on version tags (`v*`)
 
-#### Current Version: 1.5.4
+#### Current Version: 1.7.0
 
 #### Download URLs (in LandingPage.jsx):
 | Platform | Filename |
 |----------|----------|
-| Windows Installer | `SatsLegacy.Setup.1.5.4.exe` |
-| Windows Portable | `SatsLegacy.1.5.4.exe` |
-| macOS Apple Silicon | `SatsLegacy-1.5.4-arm64.dmg` |
-| macOS Intel | `SatsLegacy-1.5.4.dmg` |
-| Linux AppImage | `SatsLegacy-1.5.4.AppImage` |
-| Linux Deb | `SatsLegacy_1.5.4_amd64.deb` |
+| Windows Installer | `SatsLegacy.Setup.1.7.0.exe` |
+| Windows Portable | `SatsLegacy.1.7.0.exe` |
+| macOS Apple Silicon | `SatsLegacy-1.7.0-arm64.dmg` |
+| macOS Intel | `SatsLegacy-1.7.0.dmg` |
+| Linux AppImage | `SatsLegacy-1.7.0.AppImage` |
+| Linux Deb | `SatsLegacy_1.7.0_amd64.deb` |
 
 ---
 

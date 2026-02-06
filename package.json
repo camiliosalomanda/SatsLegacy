@@ -1,6 +1,6 @@
 {
   "name": "SatsLegacy",
-  "version": "1.6.1",
+  "version": "1.7.0",
   "description": "Sovereign Bitcoin Inheritance - No custody, no fees, no third parties",
   "main": "electron/main.cjs",
   "author": {
@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@bitcoinerlab/miniscript": "^1.4.3",
-    "@noble/secp256k1": "^3.0.0",
+    "bip32": "^5.0.0",
     "bitcoinjs-lib": "^7.0.1",
     "buffer": "^6.0.3",
     "lucide-react": "^0.263.1",
@@ -52,6 +52,8 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vite": "^5.0.0",
+    "vite-plugin-top-level-await": "^1.6.0",
+    "vite-plugin-wasm": "^3.5.0",
     "wait-on": "^7.2.0"
   },
   "build": {
