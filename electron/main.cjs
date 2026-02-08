@@ -263,6 +263,10 @@ function createWindow() {
   });
 
   // Set Content-Security-Policy
+  // Note: style-src 'unsafe-inline' is required in both dev and production because
+  // Tailwind CSS injects styles at runtime. Removing it would break all styling.
+  // This is standard for Tailwind-based apps and poses minimal security risk
+  // compared to script-src 'unsafe-inline' (which is only enabled in dev mode).
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     const csp = isDev
       ? "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws://localhost:* http://localhost:* https:; img-src 'self' data:; font-src 'self' data:"
@@ -1036,8 +1040,14 @@ ipcMain.handle('duress:deleteDecoyVault', async (event, { vaultId }) => {
 });
 
 // Secure file deletion with multi-pass overwrite
-// Note: On SSDs, this provides limited protection due to wear leveling
-// For true security on SSDs, full-disk encryption is recommended
+// IMPORTANT: On SSDs, multi-pass overwrite provides LIMITED protection because:
+//   1. SSD wear-leveling remaps physical sectors, so overwritten data may persist
+//      in retired sectors that the OS cannot address.
+//   2. SSD TRIM may deallocate blocks without overwriting, leaving data recoverable
+//      via direct flash chip access.
+//   3. SSD firmware-level garbage collection operates independently of OS writes.
+// For true data-at-rest security on SSDs, use full-disk encryption (BitLocker,
+// FileVault, LUKS) so that deleted data is unreadable without the encryption key.
 const MAX_WIPE_FILE_SIZE = 10 * 1024 * 1024; // 10MB max to prevent OOM
 
 function secureDeleteFile(filePath) {

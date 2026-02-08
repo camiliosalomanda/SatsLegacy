@@ -22,6 +22,10 @@ import {
 import { dateToBlockHeight, estimateCurrentBlockHeight } from './bitcoin-address';
 
 // Network configurations
+// Note: Signet uses testnet address format (tb1...) and network parameters,
+// so bitcoin.networks.testnet is correct for address encoding/decoding.
+// Signet differs from testnet in genesis block and consensus rules, but
+// bitcoinjs-lib only uses the network object for address prefix/version bytes.
 const networks: Record<NetworkType, bitcoin.Network> = {
   mainnet: bitcoin.networks.bitcoin,
   testnet: bitcoin.networks.testnet,

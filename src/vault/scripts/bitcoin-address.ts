@@ -10,6 +10,48 @@ import BIP32Factory from 'bip32';
 import * as ecc from 'tiny-secp256k1';
 import { Buffer } from 'buffer';
 
+// ============================================
+// TYPES
+// ============================================
+
+/** Describes a single spending path for a vault script */
+export interface SpendPath {
+  name: string;
+  description: string;
+  witness?: string;
+  sequence?: number;
+  availableNow?: boolean;
+  availableAfterBlock?: number;
+  combinations?: string[][];
+  note?: string;
+  requirements?: string[];
+}
+
+/** Redeem information returned by address generation functions */
+export interface VaultRedeemInfo {
+  ownerPubkey?: string;
+  heirPubkey?: string;
+  heirPubkeys?: string[];
+  locktime?: number;
+  sequenceBlocks?: number;
+  sequenceEncoded?: number;
+  estimatedDays?: number;
+  timelockType?: 'absolute' | 'relative';
+  config?: {
+    initialThreshold: number;
+    initialTotal: number;
+    decayedThreshold: number;
+    decayedTotal: number;
+    decayAfterBlocks: number;
+  };
+  pubkeys?: string[];
+  threshold?: number;
+  decayedThreshold?: number;
+  miniscript?: string;
+  keys?: string[];
+  spendPaths: SpendPath[];
+}
+
 // Initialize BIP32 with secp256k1
 const bip32 = BIP32Factory(ecc);
 
@@ -57,10 +99,11 @@ export function dateToBlockHeight(dateStr: string): number {
 }
 
 /**
- * Convert a Uint8Array to hex string
+ * Convert a Uint8Array to hex string.
+ * Uses Buffer for efficiency since it's already available via the buffer polyfill.
  */
 function toHex(bytes: Uint8Array): string {
-  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+  return Buffer.from(bytes).toString('hex');
 }
 
 /**
@@ -155,7 +198,12 @@ export function normalizePublicKey(key: string): string {
 }
 
 /**
- * Generate a simple P2WPKH (native segwit) address from a public key
+ * Generate a simple P2WPKH (native segwit) address from a public key.
+ *
+ * Expects a 33-byte compressed public key in hex (starting with 02 or 03).
+ * Callers should validate with isHexPubkey() or normalizePublicKey() first.
+ * bitcoinjs-lib will throw internally if the key is invalid, but pre-validation
+ * provides clearer error messages.
  */
 export function generateP2WPKHAddress(
   publicKeyHex: string,
@@ -278,7 +326,7 @@ export function generateDeadManSwitchAddress(
   heirPubkeyHex: string,
   sequenceBlocks: number, // Number of blocks of inactivity before heir can claim
   network: 'mainnet' | 'testnet' | 'signet' = 'mainnet'
-): { address: string; witnessScript: string; sequence: number; redeemInfo: object } {
+): { address: string; witnessScript: string; sequence: number; redeemInfo: VaultRedeemInfo } {
   const ownerPubkey = Buffer.from(ownerPubkeyHex, 'hex');
   const heirPubkey = Buffer.from(heirPubkeyHex, 'hex');
 
@@ -379,7 +427,7 @@ export function generateThreshDecayAddress(
   initialThreshold: number,
   decayAfterBlocks: number,
   network: 'mainnet' | 'testnet' | 'signet' = 'mainnet'
-): { address: string; witnessScript: string; locktime: number; miniscript: string; redeemInfo: object } {
+): { address: string; witnessScript: string; locktime: number; miniscript: string; redeemInfo: VaultRedeemInfo } {
   if (pubkeysHex.length < 2) {
     throw new Error('Need at least 2 public keys');
   }
@@ -518,7 +566,7 @@ export function generateMultisigDecayAddress(
   heirPubkeysHex: string[],
   config: MultisigDecayConfig,
   network: 'mainnet' | 'testnet' | 'signet' = 'mainnet'
-): { address: string; witnessScript: string; locktime: number; redeemInfo: object } {
+): { address: string; witnessScript: string; locktime: number; redeemInfo: VaultRedeemInfo } {
   const ownerPubkey = Buffer.from(ownerPubkeyHex, 'hex');
   const heirPubkeys = heirPubkeysHex.map(pk => Buffer.from(pk, 'hex'));
 
@@ -649,7 +697,7 @@ export function generateTimelockAddress(
   heirPubkeyHex: string,
   locktime: number, // Block height
   network: 'mainnet' | 'testnet' | 'signet' = 'mainnet'
-): { address: string; witnessScript: string; redeemInfo: object } {
+): { address: string; witnessScript: string; redeemInfo: VaultRedeemInfo } {
   const ownerPubkey = Buffer.from(ownerPubkeyHex, 'hex');
   const heirPubkey = Buffer.from(heirPubkeyHex, 'hex');
   
@@ -721,7 +769,7 @@ export function generateVaultAddress(
     decayConfig?: MultisigDecayConfig; // For multisig decay
   },
   network: 'mainnet' | 'testnet' | 'signet' = 'mainnet'
-): { address: string; script?: string; redeemInfo?: object; sequence?: number; locktime?: number } {
+): { address: string; script?: string; redeemInfo?: VaultRedeemInfo; sequence?: number; locktime?: number } {
   const { logic, ownerPubkey, heirPubkeys, locktime, inactivityDays, decayConfig } = vaultConfig;
 
   // If no keys provided, generate a placeholder address

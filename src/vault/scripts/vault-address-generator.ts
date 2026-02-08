@@ -8,7 +8,7 @@
 import type { NetworkType } from '../../types/settings';
 import type { Vault, Beneficiary } from '../../types/vault';
 import { generatePolicy, compileToMiniscript, extractRedeemInfo, type VaultScriptConfig, type RedeemInfo } from './miniscript';
-import { generateTimelockAddress, generateDeadManSwitchAddress, generateMultisigAddress, validateAddress, estimateCurrentBlockHeight } from './bitcoin-address';
+import { generateTimelockAddress, generateDeadManSwitchAddress, generateMultisigAddress, validateAddress, estimateCurrentBlockHeight, type VaultRedeemInfo } from './bitcoin-address';
 
 export interface VaultAddressResult {
   address: string;
@@ -172,7 +172,7 @@ export function generateVaultAddressFromConfig(
     // Reuse lockBlocks from scriptConfig to avoid non-deterministic re-computation
     const lockBlocks = scriptConfig.timelocks[0]?.value || calculateLockBlocks(config);
 
-    let addressResult: { address: string; witnessScript: string; redeemInfo: object };
+    let addressResult: { address: string; witnessScript: string; redeemInfo: VaultRedeemInfo };
 
     switch (config.logic.primary) {
       case 'timelock':

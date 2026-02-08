@@ -82,6 +82,9 @@ interface StepProps {
 
 type WizardStep = 'name' | 'bundle' | 'infrastructure' | 'logic' | 'modifiers' | 'review';
 
+/** Wizard steps in order -- defined outside component to avoid recreation on each render */
+const WIZARD_STEPS: WizardStep[] = ['name', 'bundle', 'infrastructure', 'logic', 'modifiers', 'review'];
+
 // ============================================
 // OPTION METADATA
 // ============================================
@@ -220,7 +223,7 @@ export const VaultCreationWizard: React.FC<WizardProps> = ({ onComplete, onCance
 
   const validation = useMemo(() => validateConfiguration(config), [config]);
 
-  const steps: WizardStep[] = ['name', 'bundle', 'infrastructure', 'logic', 'modifiers', 'review'];
+  const steps = WIZARD_STEPS;
   const currentIndex = steps.indexOf(step);
 
   const canProceed = useMemo(() => {
