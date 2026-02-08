@@ -174,14 +174,17 @@ export async function createVaultData(
       purpose: t.type === 'absolute' ? 'inheritance_trigger' : 'refresh_period',
       estimated_date: t.estimatedDate?.toISOString()
     })),
-    beneficiaries: keys
-      .filter(k => k.keyType === 'heir')
-      .map((k, i) => ({
+    beneficiaries: (() => {
+      const heirs = keys.filter(k => k.keyType === 'heir');
+      const basePercent = Math.floor(100 / heirs.length);
+      const remainder = 100 - basePercent * heirs.length;
+      return heirs.map((k, i) => ({
         id: uuidv4(),
         label: k.label,
         key_index: keys.indexOf(k),
-        allocation_percent: Math.floor(100 / keys.filter(kk => kk.keyType === 'heir').length)
-      })),
+        allocation_percent: basePercent + (i < remainder ? 1 : 0)
+      }));
+    })(),
     infrastructure: config.infrastructure,
     logic: {
       primary: config.primaryLogic,

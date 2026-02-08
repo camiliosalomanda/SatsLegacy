@@ -25,8 +25,11 @@ export function VaultCard({ vault, showDelete = false }: VaultCardProps) {
 
   const handleVaultClick = async () => {
     // Check if vault needs to be unlocked (no ownerPubkey means encrypted data not loaded)
-    if (!vault.ownerPubkey && electronAPI) {
-      setShowPasswordInput(true);
+    if (!vault.ownerPubkey) {
+      if (electronAPI) {
+        setShowPasswordInput(true);
+      }
+      // In web mode without ownerPubkey, vault is incomplete - don't select
       return;
     }
     selectVault(vault);

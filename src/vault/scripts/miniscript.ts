@@ -108,11 +108,24 @@ function generateMultisigDecayPolicy(
   keys: string[],
   config: MultisigDecayConfig
 ): string {
-  const keyList = keys.join(',')
-  
+  // Validate key counts match config
+  if (keys.length < config.initialTotal) {
+    throw new Error(
+      `Not enough keys for multisig decay: need ${config.initialTotal} for initial threshold, ` +
+      `but only ${keys.length} keys provided.`
+    );
+  }
+  const heirKeyCount = keys.length - 1; // exclude owner at index 0
+  if (heirKeyCount < config.decayedTotal) {
+    throw new Error(
+      `Not enough heir keys for decayed threshold: need ${config.decayedTotal}, ` +
+      `but only ${heirKeyCount} heir keys available.`
+    );
+  }
+
   // Before decay: requires initialThreshold of initialTotal
   const beforeDecay = `thresh(${config.initialThreshold},${keys.slice(0, config.initialTotal).map(k => `pk(${k})`).join(',')})`
-  
+
   // After decay: requires decayedThreshold of decayedTotal (usually just heir keys)
   const heirKeys = keys.filter((_, i) => i > 0) // Exclude owner key
   const afterDecay = `and(thresh(${config.decayedThreshold},${heirKeys.slice(0, config.decayedTotal).map(k => `pk(${k})`).join(',')}),after(${config.decayAfterBlocks}))`
@@ -132,6 +145,13 @@ function generateDeadManSwitchPolicy(
   heirKey: string,
   timeoutBlocks: number
 ): string {
+  // BIP68 relative timelocks are encoded in 16 bits (max 65535)
+  if (timeoutBlocks < 1 || timeoutBlocks > 65535) {
+    throw new Error(
+      `older() value ${timeoutBlocks} is out of BIP68 range (1-65535). ` +
+      `Maximum is ~455 days in block-based mode.`
+    );
+  }
   // Using 'older' for relative timelock (OP_CHECKSEQUENCEVERIFY)
   return `or(pk(${ownerKey}),and(pk(${heirKey}),older(${timeoutBlocks})))`
 }
@@ -244,10 +264,11 @@ export function generateStaggeredPolicies(
   const baseLockBlocks = config.timelocks[0]?.value || 52560
 
   return config.staggeredConfig.stages.map((stage, index) => {
+    const timelockType = config.logic === 'dead_man_switch' ? 'relative' as const : 'absolute' as const;
     const stageConfig = {
       ...config,
       timelocks: [{
-        type: 'absolute' as const,
+        type: timelockType,
         value: baseLockBlocks + stage.blocksAfterTrigger
       }]
     }
@@ -462,8 +483,8 @@ export function analyzePolicy(policy: string): {
   const keys: string[] = []
   const timelocks: { type: 'absolute' | 'relative', value: number }[] = []
   
-  // Extract public keys
-  const keyMatches = policy.matchAll(/pk\(([a-fA-F0-9]+)\)/g)
+  // Extract public keys (hex keys, xpub/tpub descriptors, or other key formats)
+  const keyMatches = policy.matchAll(/pk\(([^)]+)\)/g)
   for (const match of keyMatches) {
     keys.push(match[1])
   }

@@ -468,7 +468,10 @@ export function exportVaultToQR(encrypted: EncryptedVault): string {
     v: encrypted.vault_id,
     e: encrypted.ciphertext,
     s: encrypted.encryption.kdf_params.salt,
-    i: encrypted.encryption.iv
+    i: encrypted.encryption.iv,
+    a: encrypted.encryption.algorithm,     // Algorithm identifier for recovery
+    k: encrypted.encryption.kdf,           // KDF type (pbkdf2 or argon2id)
+    n: encrypted.encryption.kdf_params.iterations  // Iteration count
   }
   return 'BTVAULT:' + btoa(JSON.stringify(compact))
 }

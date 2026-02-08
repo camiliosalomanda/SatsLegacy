@@ -8,7 +8,6 @@
 import * as bitcoin from 'bitcoinjs-lib';
 import BIP32Factory from 'bip32';
 import * as ecc from 'tiny-secp256k1';
-import bs58check from 'bs58check';
 import { Buffer } from 'buffer';
 
 // Initialize BIP32 with secp256k1
@@ -45,6 +44,14 @@ export function estimateCurrentBlockHeight(): number {
  */
 export function dateToBlockHeight(dateStr: string): number {
   const targetDate = new Date(dateStr);
+  if (isNaN(targetDate.getTime())) {
+    throw new Error(`Invalid date string: "${dateStr}". Cannot compute block height.`);
+  }
+  if (targetDate.getTime() < Date.now()) {
+    throw new Error(
+      `Lock date ${dateStr} is in the past. A past locktime means the heir path is immediately spendable.`
+    );
+  }
   const daysSinceAnchor = (targetDate.getTime() - ANCHOR_DATE.getTime()) / (24 * 60 * 60 * 1000);
   return Math.floor(ANCHOR_HEIGHT + daysSinceAnchor * BLOCKS_PER_DAY);
 }
@@ -100,7 +107,13 @@ export function xpubToPublicKey(xpub: string, derivePath: string = '0/0'): strin
 }
 
 /**
- * Get the master fingerprint from an xpub (for PSBT BIP32 derivation info)
+ * Get the fingerprint of this xpub node (for PSBT BIP32 derivation info).
+ *
+ * NOTE: This returns the fingerprint of the xpub node itself (HASH160 of its
+ * public key), NOT the master/root fingerprint. For PSBT BIP32 derivation
+ * hints, hardware wallets need the root master fingerprint. To get that,
+ * you would need the root xpub (depth 0) or store the master fingerprint
+ * separately during initial key setup.
  */
 export function getXpubFingerprint(xpub: string): Buffer {
   try {

@@ -258,7 +258,13 @@ export async function createSweepPsbt(
     // Handle both hex string format and comma-separated number format (from IPC serialization)
     if (typeof vault.witnessScript === 'string' && vault.witnessScript.includes(',')) {
       // Comma-separated numbers format: "99,33,3,54,..."
-      const bytes = vault.witnessScript.split(',').map(n => parseInt(n.trim(), 10));
+      const bytes = vault.witnessScript.split(',').map(n => {
+        const val = parseInt(n.trim(), 10);
+        if (isNaN(val) || val < 0 || val > 255) {
+          throw new Error(`Invalid byte value in witnessScript: "${n.trim()}". Expected 0-255.`);
+        }
+        return val;
+      });
       witnessScript = Buffer.from(bytes);
     } else {
       // Hex string format: "632103..."
@@ -322,7 +328,7 @@ export async function createSweepPsbt(
 
       inputData.witnessUtxo = {
         script: scriptBytes,
-        value: BigInt(utxo.value),
+        value: BigInt(Math.round(utxo.value)),
       };
     } else {
       // Fallback: construct P2WSH output script from witness script
@@ -333,7 +339,7 @@ export async function createSweepPsbt(
         });
         inputData.witnessUtxo = {
           script: p2wsh.output!,
-          value: BigInt(utxo.value),
+          value: BigInt(Math.round(utxo.value)),
         };
       }
     }
@@ -695,7 +701,13 @@ export async function createRefreshPsbt(
   } else if (vault.witnessScript) {
     // Handle both hex string format and comma-separated number format (from IPC serialization)
     if (typeof vault.witnessScript === 'string' && vault.witnessScript.includes(',')) {
-      const bytes = vault.witnessScript.split(',').map(n => parseInt(n.trim(), 10));
+      const bytes = vault.witnessScript.split(',').map(n => {
+        const val = parseInt(n.trim(), 10);
+        if (isNaN(val) || val < 0 || val > 255) {
+          throw new Error(`Invalid byte value in witnessScript: "${n.trim()}". Expected 0-255.`);
+        }
+        return val;
+      });
       witnessScript = Buffer.from(bytes);
     } else {
       witnessScript = Buffer.from(vault.witnessScript, 'hex');
@@ -740,7 +752,7 @@ export async function createRefreshPsbt(
       }
       inputData.witnessUtxo = {
         script: scriptBytes,
-        value: BigInt(utxo.value),
+        value: BigInt(Math.round(utxo.value)),
       };
     } else if (witnessScript) {
       const p2wsh = bitcoin.payments.p2wsh({
@@ -749,7 +761,7 @@ export async function createRefreshPsbt(
       });
       inputData.witnessUtxo = {
         script: p2wsh.output!,
-        value: BigInt(utxo.value),
+        value: BigInt(Math.round(utxo.value)),
       };
     }
 

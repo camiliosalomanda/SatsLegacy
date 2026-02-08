@@ -312,7 +312,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         throw e;
       }
     } else {
-      setVaults(prev => prev.filter(v => v.id !== vaultId));
+      setVaults(prev => prev.filter(v => getVaultId(v) !== vaultId));
       setSelectedVault(null);
     }
   }, []);
@@ -379,7 +379,8 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     const network = settings.network || 'mainnet';
 
     try {
-      const heirPubkeys = vault.beneficiaries.map(b => b.pubkey);
+      const heirPubkeys = vault.beneficiaries.map(b => b.pubkey).filter(Boolean);
+      if (heirPubkeys.length === 0) return null;
 
       const result = generateVaultAddress(
         {
@@ -502,20 +503,32 @@ export function VaultProvider({ children }: { children: ReactNode }) {
   }, [selectedVault, tryGenerateVaultScript]);
 
   const updateVaultBalances = useCallback(async (btcPrice: number, network: NetworkType) => {
-    const updatedVaults = await Promise.all(
-      vaults.map(async (vault) => {
+    // Snapshot current vault IDs and addresses to fetch balances
+    // Use functional state update to avoid stale closure over vaults array
+    const currentVaults = vaults;
+    const balanceMap = new Map<string, number>();
+
+    await Promise.all(
+      currentVaults.map(async (vault) => {
         if (vault.address) {
-          const balance = await fetchAddressBalance(vault.address, network);
-          return {
-            ...vault,
-            balance,
-            balanceUSD: balance * btcPrice
-          };
+          try {
+            const balance = await fetchAddressBalance(vault.address, network);
+            balanceMap.set(getVaultId(vault), balance);
+          } catch {
+            // Individual vault balance fetch failure does not block others
+          }
         }
-        return vault;
       })
     );
-    setVaults(updatedVaults);
+
+    setVaults(prev => prev.map(vault => {
+      const id = getVaultId(vault);
+      if (balanceMap.has(id)) {
+        const balance = balanceMap.get(id)!;
+        return { ...vault, balance, balanceUSD: balance * btcPrice };
+      }
+      return vault;
+    }));
   }, [vaults]);
 
   const updateVaultUSDValues = useCallback((btcPrice: number) => {
