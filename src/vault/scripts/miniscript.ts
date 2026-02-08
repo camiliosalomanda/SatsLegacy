@@ -458,8 +458,21 @@ export function extractRedeemInfo(
     }
   }
 
+  // Collect only the keys that appear in at least one spend path
+  const pathKeys = new Set<string>();
+  for (const path of spendPaths) {
+    for (const req of path.requirements) {
+      const keyMatch = config.keys.find(k => req.includes(k.label));
+      if (keyMatch) pathKeys.add(keyMatch.publicKey);
+    }
+  }
+  // Fall back to all keys if no spend paths were detected
+  const relevantKeys = pathKeys.size > 0
+    ? Array.from(pathKeys)
+    : config.keys.map(k => k.publicKey);
+
   return {
-    requiredKeys: config.keys.map(k => k.publicKey),
+    requiredKeys: relevantKeys,
     requiredTimelocks: config.timelocks,
     requiredChallenge: config.additionalGates.includes('challenge'),
     spendPaths
@@ -516,7 +529,9 @@ export function analyzePolicy(policy: string): {
     keys,
     timelocks,
     hasChallenge: policy.includes('sha256('),
-    hasOracle: keys.length > 2 && policy.includes('and(and(pk(')
+    // Oracle adds an extra pk() wrapping the heir condition.
+    // Count nested pk() calls - more than 2 in an and(pk(...),and(pk(...) pattern suggests oracle.
+    hasOracle: keys.length > 2 && (policy.includes('and(pk(') && (policy.match(/and\(pk\(/g) || []).length >= 2)
   }
 }
 

@@ -125,10 +125,13 @@ export function getXpubFingerprint(xpub: string): Buffer {
 }
 
 /**
- * Check if a string is an extended public key (xpub/tpub/etc)
+ * Check if a string is an extended public key (xpub/tpub/etc).
+ * Accepts standard prefixes: xpub, ypub, zpub, tpub, upub, vpub
+ * and their uppercase variants (Ypub, Zpub).
+ * Validates against Base58 character set (no 0, O, I, l).
  */
 export function isExtendedPubkey(key: string): boolean {
-  return /^[xtuvyz]pub[a-zA-Z0-9]{100,}$/.test(key);
+  return /^[xXyYzZtTuUvV]pub[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{100,108}$/.test(key);
 }
 
 /**
@@ -610,12 +613,15 @@ export function generateMultisigDecayAddress(
 }
 
 /**
- * Generate all k-combinations of an array (for showing possible signing combinations)
+ * Generate all k-combinations of an array (for showing possible signing combinations).
+ * Caps output at 1000 combinations to prevent performance issues with large key sets.
  */
 function generateCombinations(arr: string[], k: number): string[][] {
+  const MAX_COMBINATIONS = 1000;
   const result: string[][] = [];
 
   function combine(start: number, combo: string[]) {
+    if (result.length >= MAX_COMBINATIONS) return;
     if (combo.length === k) {
       result.push([...combo]);
       return;

@@ -42,7 +42,8 @@ export function VaultCard({ vault, showDelete = false }: VaultCardProps) {
     setError('');
 
     try {
-      const result = await electronAPI.vault.load(vault.vault_id || vault.id, password);
+      const vaultId = vault.vault_id || vault.id || '';
+      const result = await electronAPI.vault.load(vaultId, password);
       if (result.success && result.vault) {
         let loadedVault = result.vault as Vault;
 

@@ -350,10 +350,18 @@ export class VaultStorage {
     this.vaultPath = vaultPath
   }
 
+  /** Validate vault ID to prevent path traversal */
+  private validateVaultId(vaultId: string): void {
+    if (!vaultId || !/^[a-zA-Z0-9_-]+$/.test(vaultId)) {
+      throw new Error('Invalid vault ID: must contain only alphanumeric characters, hyphens, and underscores')
+    }
+  }
+
   /**
    * Save an encrypted vault
    */
   async saveVault(encrypted: EncryptedVault): Promise<void> {
+    this.validateVaultId(encrypted.vault_id)
     const path = `${this.vaultPath}/${encrypted.vault_id}/config.enc`
     await this.backend.write(path, JSON.stringify(encrypted))
 
@@ -371,6 +379,7 @@ export class VaultStorage {
    * Load an encrypted vault
    */
   async loadVault(vaultId: string): Promise<EncryptedVault | null> {
+    this.validateVaultId(vaultId)
     const path = `${this.vaultPath}/${vaultId}/config.enc`
     const data = await this.backend.read(path)
     if (!data) return null
@@ -381,6 +390,7 @@ export class VaultStorage {
    * Delete a vault
    */
   async deleteVault(vaultId: string): Promise<void> {
+    this.validateVaultId(vaultId)
     const configPath = `${this.vaultPath}/${vaultId}/config.enc`
     const metadataPath = `${this.vaultPath}/${vaultId}/metadata.json`
     await this.backend.delete(configPath)
@@ -403,6 +413,7 @@ export class VaultStorage {
     created_at: string
     updated_at: string
   } | null> {
+    this.validateVaultId(vaultId)
     const path = `${this.vaultPath}/${vaultId}/metadata.json`
     const data = await this.backend.read(path)
     if (!data) return null
@@ -413,6 +424,7 @@ export class VaultStorage {
    * Check if vault exists
    */
   async vaultExists(vaultId: string): Promise<boolean> {
+    this.validateVaultId(vaultId)
     const path = `${this.vaultPath}/${vaultId}/config.enc`
     return this.backend.exists(path)
   }
@@ -481,7 +493,14 @@ export function exportVaultToQR(encrypted: EncryptedVault): string {
 // ============================================
 
 function arrayToBase64(array: Uint8Array): string {
-  const binary = String.fromCharCode(...array)
+  // Use chunked approach to avoid call stack overflow on large arrays
+  // (spread operator hits max call stack size above ~100KB)
+  const CHUNK_SIZE = 8192
+  let binary = ''
+  for (let i = 0; i < array.length; i += CHUNK_SIZE) {
+    const chunk = array.subarray(i, Math.min(i + CHUNK_SIZE, array.length))
+    binary += String.fromCharCode.apply(null, chunk as unknown as number[])
+  }
   return btoa(binary)
 }
 

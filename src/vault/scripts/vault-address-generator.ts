@@ -5,18 +5,10 @@
  * into a single workflow for generating P2WSH inheritance vault addresses.
  */
 
-import * as bitcoin from 'bitcoinjs-lib';
 import type { NetworkType } from '../../types/settings';
 import type { Vault, Beneficiary } from '../../types/vault';
 import { generatePolicy, compileToMiniscript, extractRedeemInfo, type VaultScriptConfig, type RedeemInfo } from './miniscript';
 import { generateTimelockAddress, generateDeadManSwitchAddress, generateMultisigAddress, validateAddress, estimateCurrentBlockHeight } from './bitcoin-address';
-
-// Network configurations
-const networks: Record<NetworkType, bitcoin.Network> = {
-  mainnet: bitcoin.networks.bitcoin,
-  testnet: bitcoin.networks.testnet,
-  signet: bitcoin.networks.testnet, // Signet uses testnet address format
-};
 
 export interface VaultAddressResult {
   address: string;
@@ -177,7 +169,8 @@ export function generateVaultAddressFromConfig(
     // For now, use the direct bitcoin script generation
     // (The miniscript library gives us ASM, but we still need to use
     // bitcoinjs-lib for address generation from our custom scripts)
-    const lockBlocks = calculateLockBlocks(config);
+    // Reuse lockBlocks from scriptConfig to avoid non-deterministic re-computation
+    const lockBlocks = scriptConfig.timelocks[0]?.value || calculateLockBlocks(config);
 
     let addressResult: { address: string; witnessScript: string; redeemInfo: object };
 

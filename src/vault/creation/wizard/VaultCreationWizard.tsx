@@ -493,11 +493,15 @@ const NameStep: React.FC<{
         <input
           type="text"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => setName(e.target.value.slice(0, 64))}
           placeholder="e.g., Family Inheritance, Emergency Fund"
+          maxLength={64}
           className="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:border-orange-500 focus:outline-none"
           autoFocus
         />
+        {name.length >= 64 && (
+          <p className="text-xs text-zinc-500 mt-1">Maximum 64 characters</p>
+        )}
       </div>
 
       <div>
