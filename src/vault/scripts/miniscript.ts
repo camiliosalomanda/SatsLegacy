@@ -136,118 +136,98 @@ function generateDeadManSwitchPolicy(
   return `or(pk(${ownerKey}),and(pk(${heirKey}),older(${timeoutBlocks})))`
 }
 
-/**
- * Wrap a policy with challenge-response requirement
- * 
- * Adds hash preimage requirement to spend.
- */
-function wrapWithChallenge(policy: string, challengeHash: string): string {
-  return `and(sha256(${challengeHash}),${policy})`
-}
-
-/**
- * Generate policy with duress escape hatch
- * 
- * Adds alternative spend path that burns/donates funds.
- */
-function generateDuressPolicy(
-  mainPolicy: string,
-  duressKey: string
-): string {
-  // Duress key alone triggers burn (actual burn happens in script construction)
-  return `or(${mainPolicy},pk(${duressKey}))`
-}
-
-/**
- * Wrap with oracle attestation
- * 
- * Requires oracle signature in addition to heir key.
- */
-function wrapWithOracle(policy: string, oracleKey: string): string {
-  // Oracle must co-sign for inheritance path
-  return policy.replace(
-    /and\(pk\(([^)]+)\),after/g,
-    `and(and(pk($1),pk(${oracleKey})),after`
-  )
-}
+// Gate functions are no longer used as string wrappers.
+// Gates are now applied structurally inside generatePolicy() to ensure:
+// - Challenge only gates the heir path, not the owner (CRIT-6 fix)
+// - Oracle is applied structurally, not via fragile regex (CRIT-8 fix)
+// - Duress is NOT added to on-chain script — Bitcoin Script cannot enforce
+//   sending to a specific address, so a duress key would just be an
+//   unconditional spending backdoor. Duress is handled at the app layer
+//   via decoy vaults and duress password detection. (CRIT-7 fix)
 
 // ============================================
 // MAIN POLICY GENERATOR
 // ============================================
 
 /**
- * Generate Miniscript policy from vault configuration
+ * Generate Miniscript policy from vault configuration.
+ *
+ * Gates (challenge, oracle) are applied ONLY to the heir spending condition,
+ * never to the owner path. This ensures the owner can always spend their
+ * own funds without needing a preimage or oracle co-sign.
+ *
+ * Duress is NOT included in the on-chain script — it is handled by the
+ * application layer (decoy vaults / duress password). Bitcoin Script cannot
+ * enforce routing funds to a burn address, so an on-chain duress key would
+ * be an unconditional backdoor.
  */
 export function generatePolicy(config: VaultScriptConfig): string {
   const ownerKey = config.keys.find(k => k.keyType === 'owner')?.publicKey
   const heirKeys = config.keys.filter(k => k.keyType === 'heir').map(k => k.publicKey)
   const oracleKey = config.keys.find(k => k.keyType === 'oracle')?.publicKey
-  
+
   if (!ownerKey) {
     throw new Error('Owner key is required')
   }
-  
+
   if (heirKeys.length === 0) {
     throw new Error('At least one heir key is required')
   }
 
-  let policy: string
-
-  // Generate base policy based on primary logic
-  switch (config.logic) {
-    case 'timelock': {
-      const lockBlocks = config.timelocks[0]?.value || 52560 // ~1 year default
-      policy = generateTimelockPolicy(ownerKey, heirKeys[0], lockBlocks)
-      break
+  // For multisig_decay, the structure is fundamentally different (no simple owner/heir split)
+  if (config.logic === 'multisig_decay') {
+    if (!config.decayConfig) {
+      throw new Error('Decay config required for multisig_decay logic')
     }
-    
-    case 'multisig_decay': {
-      if (!config.decayConfig) {
-        throw new Error('Decay config required for multisig_decay logic')
-      }
-      const allKeys = [ownerKey, ...heirKeys]
-      policy = generateMultisigDecayPolicy(allKeys, config.decayConfig)
-      break
-    }
-    
-    case 'dead_man_switch': {
-      const timeoutBlocks = config.timelocks[0]?.value || 4320 // ~30 days default
-      policy = generateDeadManSwitchPolicy(ownerKey, heirKeys[0], timeoutBlocks)
-      break
-    }
-    
-    default:
-      // Default to simple timelock
-      policy = generateTimelockPolicy(ownerKey, heirKeys[0], 52560)
+    const allKeys = [ownerKey, ...heirKeys]
+    return generateMultisigDecayPolicy(allKeys, config.decayConfig)
   }
 
-  // Apply additional gates
+  // Build the heir spending condition based on vault type
+  let heirCondition: string
+
+  switch (config.logic) {
+    case 'timelock': {
+      const lockBlocks = config.timelocks[0]?.value || 52560
+      heirCondition = `and(pk(${heirKeys[0]}),after(${lockBlocks}))`
+      break
+    }
+    case 'dead_man_switch': {
+      const timeoutBlocks = config.timelocks[0]?.value || 4320
+      heirCondition = `and(pk(${heirKeys[0]}),older(${timeoutBlocks}))`
+      break
+    }
+    default: {
+      heirCondition = `and(pk(${heirKeys[0]}),after(52560))`
+    }
+  }
+
+  // Apply gates ONLY to the heir condition (not the owner path)
   for (const gate of config.additionalGates) {
     switch (gate) {
       case 'challenge':
         if (config.challengeHash) {
-          policy = wrapWithChallenge(policy, config.challengeHash)
+          // Heir must also provide the SHA-256 preimage
+          heirCondition = `and(sha256(${config.challengeHash}),${heirCondition})`
         }
         break
-      
+
       case 'oracle':
         if (oracleKey) {
-          policy = wrapWithOracle(policy, oracleKey)
+          // Heir must also have oracle co-signature
+          heirCondition = `and(pk(${oracleKey}),${heirCondition})`
         }
         break
-      
+
       case 'duress':
-        if (config.duressConfig) {
-          const duressKey = config.keys[config.duressConfig.duressKeyIndex]?.publicKey
-          if (duressKey) {
-            policy = generateDuressPolicy(policy, duressKey)
-          }
-        }
+        // Duress is handled at the application layer (decoy vaults),
+        // NOT in the on-chain script. See CRIT-7 explanation above.
         break
     }
   }
 
-  return policy
+  // Owner can always spend; heir can spend when their conditions are met
+  return `or(pk(${ownerKey}),${heirCondition})`
 }
 
 /**

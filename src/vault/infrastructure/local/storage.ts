@@ -77,12 +77,12 @@ export interface EncryptedVault {
   version: number
   encryption: {
     algorithm: 'AES-256-GCM'
-    kdf: 'argon2id'
+    kdf: 'pbkdf2' | 'argon2id'  // 'argon2id' for legacy vaults, 'pbkdf2' for new
     kdf_params: {
       salt: string       // Base64 encoded
-      iterations: number
-      memory: number     // KB
-      parallelism: number
+      iterations: number // PBKDF2: 600000; legacy argon2id vaults: 3
+      memory?: number    // Only for argon2id (KB)
+      parallelism?: number // Only for argon2id
     }
     iv: string           // Base64 encoded
     tag: string          // Base64 encoded auth tag
@@ -202,12 +202,10 @@ export async function encryptVault(
     version: vault.version,
     encryption: {
       algorithm: 'AES-256-GCM',
-      kdf: 'argon2id', // Stored for future migration
+      kdf: 'pbkdf2',
       kdf_params: {
         salt: arrayToBase64(salt),
-        iterations: ARGON2_ITERATIONS,
-        memory: ARGON2_MEMORY,
-        parallelism: ARGON2_PARALLELISM
+        iterations: 600000, // OWASP recommendation for PBKDF2-SHA256
       },
       iv: arrayToBase64(iv),
       tag: arrayToBase64(authTag)

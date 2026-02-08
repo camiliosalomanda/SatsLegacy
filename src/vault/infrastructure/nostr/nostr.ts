@@ -1,9 +1,13 @@
 /**
  * BitTrust Nostr Relay Storage
- * 
+ *
  * Stores encrypted vault configurations on Nostr relays
  * for censorship-resistant off-site backup.
+ *
+ * Uses secp256k1 for proper NIP-01 key generation and BIP-340 Schnorr signing.
  */
+
+import * as ecc from 'tiny-secp256k1';
 
 // ============================================
 // TYPE DEFINITIONS
@@ -68,42 +72,72 @@ const DEFAULT_CONFIG: NostrStorageConfig = {
 // CRYPTOGRAPHIC UTILITIES
 // ============================================
 
-export async function generateNostrKeys(seed?: Uint8Array): Promise<NostrKeys> {
+/**
+ * Generate Nostr keypair using secp256k1.
+ * Public key is the x-only pubkey (32 bytes) per NIP-01.
+ */
+export function generateNostrKeys(seed?: Uint8Array): NostrKeys {
   const privateKey = seed || crypto.getRandomValues(new Uint8Array(32))
-  const publicKeyBytes = await crypto.subtle.digest('SHA-256', privateKey)
-  const publicKey = bytesToHex(new Uint8Array(publicKeyBytes))
+
+  // Derive public key via secp256k1 point multiplication (compressed, 33 bytes)
+  const compressedPubkey = ecc.pointFromScalar(privateKey)
+  if (!compressedPubkey) {
+    throw new Error('Invalid private key - could not derive public key')
+  }
+
+  // Nostr uses x-only pubkey (32 bytes, no 02/03 prefix) per BIP-340/NIP-01
+  const publicKey = bytesToHex(compressedPubkey.slice(1))
   return { privateKey, publicKey }
 }
 
+/**
+ * Sign a Nostr event using BIP-340 Schnorr signatures.
+ */
 export async function signEvent(
   event: NostrEvent,
   privateKey: Uint8Array
 ): Promise<NostrEvent> {
+  // Compute event ID per NIP-01: SHA-256 of serialized event
   const serialized = JSON.stringify([
     0, event.pubkey, event.created_at, event.kind, event.tags, event.content
   ])
-  
+
   const idBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(serialized))
-  const id = bytesToHex(new Uint8Array(idBuffer))
-  
-  const sigInput = new Uint8Array([...hexToBytes(id), ...privateKey])
-  const sigBuffer = await crypto.subtle.digest('SHA-256', sigInput)
-  const sig = bytesToHex(new Uint8Array(sigBuffer)) + bytesToHex(new Uint8Array(sigBuffer))
-  
+  const idBytes = new Uint8Array(idBuffer)
+  const id = bytesToHex(idBytes)
+
+  // Sign with BIP-340 Schnorr (64-byte signature)
+  const signature = ecc.signSchnorr(idBytes, privateKey)
+  if (!signature) {
+    throw new Error('Schnorr signing failed')
+  }
+  const sig = bytesToHex(signature)
+
   return { ...event, id, sig }
 }
 
+/**
+ * Verify a Nostr event's ID and BIP-340 Schnorr signature.
+ */
 export async function verifyEvent(event: NostrEvent): Promise<boolean> {
-  if (!event.id || !event.sig) return false
-  
+  if (!event.id || !event.sig || !event.pubkey) return false
+
+  // Verify event ID
   const serialized = JSON.stringify([
     0, event.pubkey, event.created_at, event.kind, event.tags, event.content
   ])
-  
   const idBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(serialized))
   const expectedId = bytesToHex(new Uint8Array(idBuffer))
-  
-  return event.id === expectedId
+  if (event.id !== expectedId) return false
+
+  // Verify BIP-340 Schnorr signature
+  const idBytes = hexToBytes(event.id)
+  const pubkeyBytes = hexToBytes(event.pubkey) // x-only, 32 bytes
+  const sigBytes = hexToBytes(event.sig)        // 64 bytes
+
+  if (pubkeyBytes.length !== 32 || sigBytes.length !== 64) return false
+
+  return ecc.verifySchnorr(idBytes, pubkeyBytes, sigBytes)
 }
 
 // ============================================
@@ -360,7 +394,7 @@ export class HeartbeatManager {
     }
 
     const signedEvent = await signEvent(event, this.keys.privateKey)
-    console.log('Heartbeat published:', signedEvent.id)
+    // Note: event.id intentionally not logged (could leak info in crash reports)
   }
 }
 

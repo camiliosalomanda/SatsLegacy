@@ -165,7 +165,7 @@ export async function createSweepPsbt(
       inputCount: 0,
       outputCount: 0,
       totalInput: 0,
-      totalOutput: options.destinationAddress,
+      totalOutput: 0,
       error: 'Invalid destination address for this network'
     };
   }
@@ -283,13 +283,11 @@ export async function createSweepPsbt(
   const psbt = new bitcoin.Psbt({ network: btcNetwork });
 
   // Set locktime for heir spending path (required for CLTV)
+  // IMPORTANT: nLockTime MUST match the locktime embedded in the witness script's
+  // OP_CHECKLOCKTIMEVERIFY, which was computed via dateToBlockHeight() during address
+  // generation. Using any other formula will produce a mismatch and the tx will be rejected.
   if (isTimelockSpend && vault.lockDate) {
-    const lockDate = new Date(vault.lockDate);
-    const now = new Date();
-    const daysUntilLock = Math.ceil((lockDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
-    const currentHeight = await fetchBlockHeight(network) || 880000;
-    const locktime = currentHeight + Math.max(0, daysUntilLock * 144);
-    psbt.setLocktime(locktime);
+    psbt.setLocktime(dateToBlockHeight(vault.lockDate));
   }
 
   // Add inputs
@@ -436,11 +434,19 @@ export function combinePsbts(
 }
 
 /**
- * Finalize a fully signed PSBT and extract the transaction
+ * Finalize a fully signed PSBT and extract the transaction.
+ *
+ * Uses a custom finalizer for P2WSH OP_IF/OP_ELSE vault scripts.
+ * The witness stack for these scripts is:
+ * - Owner path (OP_IF):  [signature, 0x01 (TRUE), witnessScript]
+ * - Heir path (OP_ELSE): [signature, 0x00 (FALSE/empty), witnessScript]
+ *
+ * @param spendPath - Which branch of the IF/ELSE script is being used
  */
 export function finalizePsbt(
   psbtString: string,
-  network: NetworkType = 'mainnet'
+  network: NetworkType = 'mainnet',
+  spendPath: 'owner' | 'heir' = 'owner'
 ): { txHex?: string; txId?: string; error?: string } {
   const btcNetwork = networks[network];
 
@@ -452,8 +458,45 @@ export function finalizePsbt(
       psbt = bitcoin.Psbt.fromHex(psbtString, { network: btcNetwork });
     }
 
-    // Finalize all inputs
-    psbt.finalizeAllInputs();
+    // Custom finalizer for P2WSH OP_IF/OP_ELSE vault scripts
+    for (let i = 0; i < psbt.inputCount; i++) {
+      psbt.finalizeInput(i, (_inputIndex: number, input: any) => {
+        // Get the signature from partial signatures
+        if (!input.partialSig || input.partialSig.length === 0) {
+          throw new Error(`Input ${i} has no signatures`);
+        }
+        const sig = input.partialSig[0].signature;
+        const witnessScript = input.witnessScript;
+
+        if (!witnessScript) {
+          throw new Error(`Input ${i} has no witness script`);
+        }
+
+        // Build witness stack based on spend path
+        // Owner path (OP_IF): [sig, TRUE, witnessScript]
+        // Heir path (OP_ELSE): [sig, empty (FALSE), witnessScript]
+        const branchFlag = spendPath === 'owner'
+          ? Buffer.from([0x01])  // TRUE = OP_IF branch
+          : Buffer.alloc(0);     // empty = OP_ELSE branch
+
+        const witnessStack = [sig, branchFlag, witnessScript];
+
+        // Serialize witness stack
+        const parts: Buffer[] = [];
+        parts.push(Buffer.from([witnessStack.length]));
+        for (const item of witnessStack) {
+          const buf = Buffer.isBuffer(item) ? item : Buffer.from(item);
+          if (buf.length < 0xfd) {
+            parts.push(Buffer.from([buf.length]));
+          } else if (buf.length <= 0xffff) {
+            parts.push(Buffer.from([0xfd, buf.length & 0xff, (buf.length >> 8) & 0xff]));
+          }
+          parts.push(buf);
+        }
+
+        return { finalScriptWitness: Buffer.concat(parts) };
+      });
+    }
 
     // Extract the transaction
     const tx = psbt.extractTransaction();

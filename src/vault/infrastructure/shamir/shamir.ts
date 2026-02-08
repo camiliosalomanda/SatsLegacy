@@ -170,25 +170,27 @@ export function split(secret: Uint8Array, config: ShamirConfig): ShamirShare[] {
 
   const shares: ShamirShare[] = []
 
-  // Generate random coefficients for each byte position
+  // Pre-generate ONE polynomial per byte position.
+  // CRITICAL: All shares for a given byte must be evaluated on the SAME polynomial,
+  // otherwise Lagrange interpolation cannot recover the secret.
   // For each byte: f(x) = secret[i] + a1*x + a2*x^2 + ... + a(k-1)*x^(k-1)
+  const polynomials: Uint8Array[] = []
+  for (let byteIndex = 0; byteIndex < secret.length; byteIndex++) {
+    const coefficients = new Uint8Array(threshold)
+    coefficients[0] = secret[byteIndex]
+    const randomCoeffs = secureRandom(threshold - 1)
+    for (let i = 1; i < threshold; i++) {
+      coefficients[i] = randomCoeffs[i - 1]
+    }
+    polynomials.push(coefficients)
+  }
+
+  // Evaluate each polynomial at each share index
   for (let shareIndex = 1; shareIndex <= totalShares; shareIndex++) {
     const shareData = new Uint8Array(secret.length)
 
     for (let byteIndex = 0; byteIndex < secret.length; byteIndex++) {
-      // Generate polynomial coefficients
-      // coefficients[0] = secret byte
-      // coefficients[1..k-1] = random
-      const coefficients = new Uint8Array(threshold)
-      coefficients[0] = secret[byteIndex]
-      
-      const randomCoeffs = secureRandom(threshold - 1)
-      for (let i = 1; i < threshold; i++) {
-        coefficients[i] = randomCoeffs[i - 1]
-      }
-
-      // Evaluate polynomial at x = shareIndex
-      shareData[byteIndex] = evaluatePolynomial(coefficients, shareIndex)
+      shareData[byteIndex] = evaluatePolynomial(polynomials[byteIndex], shareIndex)
     }
 
     // Calculate checksum
@@ -202,6 +204,11 @@ export function split(secret: Uint8Array, config: ShamirConfig): ShamirShare[] {
       checksum,
       version: 1
     })
+  }
+
+  // Zero out polynomial coefficients (contains secret bytes)
+  for (const poly of polynomials) {
+    poly.fill(0)
   }
 
   return shares
