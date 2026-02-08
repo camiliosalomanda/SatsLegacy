@@ -2,7 +2,15 @@
 import type { Vault } from '../types/vault';
 
 export function getDaysUntilUnlock(vault: Vault): number {
-  if (vault.scriptType === 'timelock' || vault.logic?.primary === 'timelock') {
+  if (vault.logic?.primary === 'dead_man_switch' || vault.scriptType === 'dead_man_switch') {
+    // Dead Man's Switch: prefer check-in status (tracks actual inactivity),
+    // then lockDate (user-set unlock date), then inactivityTrigger as fallback.
+    if (vault.checkIn?.daysRemaining !== undefined) {
+      return vault.checkIn.daysRemaining;
+    }
+  }
+  // Use lockDate for all vault types when available
+  if (vault.lockDate) {
     const now = new Date();
     const lockDate = new Date(vault.lockDate);
     const diff = lockDate.getTime() - now.getTime();
@@ -20,7 +28,10 @@ export function getTotalBeneficiaries(vaults: Vault[]): number {
 }
 
 export function calculateVaultProgress(vault: Vault): number {
+  const isDMS = vault.logic?.primary === 'dead_man_switch' || vault.scriptType === 'dead_man_switch';
   const daysUntil = getDaysUntilUnlock(vault);
-  const totalDays = vault.inactivityTrigger || 365;
+  const totalDays = isDMS
+    ? (vault.inactivityTrigger || 365)
+    : 730; // Default 2-year scale for timelock vaults
   return Math.min(100, Math.max(0, ((totalDays - daysUntil) / totalDays) * 100));
 }

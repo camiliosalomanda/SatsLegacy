@@ -98,10 +98,12 @@ export function VaultCard({ vault, showDelete = false }: VaultCardProps) {
     }
   };
 
+  const isDMS = vault.logic?.primary === 'dead_man_switch' || vault.scriptType === 'dead_man_switch';
   const daysUntil = getDaysUntilUnlock(vault);
-  const progress = vault.scriptType === 'timelock'
-    ? Math.min(100, ((730 - daysUntil) / 730) * 100)
-    : Math.min(100, (((vault.inactivityTrigger || 365) - daysUntil) / (vault.inactivityTrigger || 365)) * 100);
+  const totalDays = isDMS
+    ? (vault.inactivityTrigger || 365)
+    : 730; // Default 2-year scale for timelock vaults
+  const progress = Math.min(100, Math.max(0, ((totalDays - daysUntil) / totalDays) * 100));
 
   const getInfraBadges = () => {
     if (!vault.infrastructure) return null;
@@ -188,7 +190,7 @@ export function VaultCard({ vault, showDelete = false }: VaultCardProps) {
 
         <div className="mb-4">
           <div className="flex items-center justify-between text-xs mb-2">
-            <span className="text-zinc-500">Time Lock Progress</span>
+            <span className="text-zinc-500">{isDMS ? 'Inactivity Timer' : 'Time Lock Progress'}</span>
             <span className="text-orange-400 font-medium">{daysUntil} days remaining</span>
           </div>
           <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
