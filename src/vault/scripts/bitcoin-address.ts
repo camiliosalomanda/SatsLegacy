@@ -21,6 +21,34 @@ const networks = {
   signet: bitcoin.networks.testnet, // Signet uses testnet address format
 };
 
+// Block height estimation anchor point
+// Block 878,000 was mined approximately January 1, 2025
+const ANCHOR_HEIGHT = 878000;
+const ANCHOR_DATE = new Date('2025-01-01T00:00:00Z');
+const BLOCKS_PER_DAY = 144; // ~10 min per block
+
+/**
+ * Estimate the current Bitcoin block height based on a known anchor point.
+ * Uses ~144 blocks/day (10 min average).
+ */
+export function estimateCurrentBlockHeight(): number {
+  const now = new Date();
+  const daysSinceAnchor = (now.getTime() - ANCHOR_DATE.getTime()) / (24 * 60 * 60 * 1000);
+  return Math.floor(ANCHOR_HEIGHT + daysSinceAnchor * BLOCKS_PER_DAY);
+}
+
+/**
+ * Convert a date string to an estimated Bitcoin block height (for CLTV locktime).
+ *
+ * Uses a known anchor point (block 878,000 ~ Jan 1 2025) and ~144 blocks/day.
+ * This is the standard way to set absolute timelocks for inheritance vaults.
+ */
+export function dateToBlockHeight(dateStr: string): number {
+  const targetDate = new Date(dateStr);
+  const daysSinceAnchor = (targetDate.getTime() - ANCHOR_DATE.getTime()) / (24 * 60 * 60 * 1000);
+  return Math.floor(ANCHOR_HEIGHT + daysSinceAnchor * BLOCKS_PER_DAY);
+}
+
 /**
  * Convert a Uint8Array to hex string
  */
@@ -672,7 +700,7 @@ export function generateVaultAddress(
       const result = generateTimelockAddress(
         normalizedOwnerPubkey,
         normalizedHeirPubkeys[0],
-        locktime || 880000 + 52560, // Default ~1 year from now
+        locktime || estimateCurrentBlockHeight() + 52560, // Default ~1 year from now
         network
       );
       return {
@@ -708,7 +736,7 @@ export function generateVaultAddress(
         initialTotal: Math.min(3, 1 + normalizedHeirPubkeys.length), // owner + up to 2 heirs
         decayedThreshold: 1,
         decayedTotal: Math.min(2, normalizedHeirPubkeys.length),
-        decayAfterBlocks: locktime || 880000 + 52560, // Default ~1 year from now
+        decayAfterBlocks: locktime || estimateCurrentBlockHeight() + 52560, // Default ~1 year from now
       };
 
       const result = generateMultisigDecayAddress(
@@ -731,7 +759,7 @@ export function generateVaultAddress(
         const result = generateTimelockAddress(
           normalizedOwnerPubkey,
           normalizedHeirPubkeys[0],
-          locktime || 880000 + 52560,
+          locktime || estimateCurrentBlockHeight() + 52560,
           network
         );
         return {

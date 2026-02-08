@@ -389,10 +389,11 @@ export function validateConfiguration(config: VaultConfiguration): ValidationRes
   const errors: ValidationError[] = []
   const warnings: ValidationWarning[] = []
 
-  // Ensure local is always included
-  if (!config.infrastructure.includes('local')) {
-    config.infrastructure = ['local', ...config.infrastructure]
-  }
+  // Ensure local is always included (don't mutate input)
+  const infrastructure = config.infrastructure.includes('local')
+    ? config.infrastructure
+    : ['local', ...config.infrastructure];
+  config = { ...config, infrastructure };
 
   // Validate infrastructure
   const infraResult = validateInfrastructure(config.infrastructure)

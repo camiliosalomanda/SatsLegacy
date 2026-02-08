@@ -9,7 +9,7 @@ import * as bitcoin from 'bitcoinjs-lib';
 import type { NetworkType } from '../../types/settings';
 import type { Vault, Beneficiary } from '../../types/vault';
 import { generatePolicy, compileToMiniscript, extractRedeemInfo, type VaultScriptConfig, type RedeemInfo } from './miniscript';
-import { generateTimelockAddress, generateMultisigAddress, validateAddress } from './bitcoin-address';
+import { generateTimelockAddress, generateMultisigAddress, validateAddress, estimateCurrentBlockHeight } from './bitcoin-address';
 
 // Network configurations
 const networks: Record<NetworkType, bitcoin.Network> = {
@@ -50,9 +50,7 @@ function calculateLockBlocks(config: VaultAddressConfig): number {
   // ~144 blocks per day on Bitcoin
   const blocksPerDay = 144;
 
-  // Current approximate block height (could be fetched from API in production)
-  // Using ~880000 as baseline for early 2024
-  const estimatedCurrentHeight = 880000;
+  const estimatedCurrentHeight = estimateCurrentBlockHeight();
 
   // If lockDate is provided, calculate blocks from that
   if (config.lockDate) {

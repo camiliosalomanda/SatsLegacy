@@ -118,19 +118,24 @@ import { generatePolicy, type VaultScriptConfig, type KeyDescriptor, type Timelo
 /**
  * Create a new vault data object from configuration
  */
-export function createVaultData(
+export async function createVaultData(
   config: VaultConfiguration,
   name: string,
   keys: KeyDescriptor[],
   timelocks: TimelockConfig[],
-  description?: string
-): VaultData {
+  description?: string,
+  challengePassphrase?: string
+): Promise<VaultData> {
+  const challengeHash = config.additionalGates.includes('challenge')
+    ? await generateChallengeHash(challengePassphrase)
+    : undefined;
+
   const scriptConfig: VaultScriptConfig = {
     keys,
     timelocks,
     logic: config.primaryLogic,
     additionalGates: config.additionalGates,
-    challengeHash: config.additionalGates.includes('challenge') ? generateChallengeHash() : undefined,
+    challengeHash,
     decayConfig: config.primaryLogic === 'multisig_decay' ? {
       initialThreshold: 2,
       initialTotal: 3,
@@ -199,30 +204,55 @@ export function createVaultData(
 }
 
 /**
- * Generate a challenge hash from a passphrase
+ * Generate a challenge hash from a passphrase using SHA-256.
+ * The heir must know the passphrase to satisfy the challenge gate.
  */
-function generateChallengeHash(): string {
-  // Placeholder - in production, would hash the user's chosen passphrase
-  const randomBytes = new Uint8Array(32);
-  crypto.getRandomValues(randomBytes);
-  return Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+async function generateChallengeHash(passphrase?: string): Promise<string> {
+  if (!passphrase) {
+    console.warn('[generateChallengeHash] No passphrase provided - challenge gate will not be verifiable');
+    const randomBytes = new Uint8Array(32);
+    crypto.getRandomValues(randomBytes);
+    return Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+  const encoder = new TextEncoder();
+  const data = encoder.encode(passphrase);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 /**
  * Estimate block height from date
  */
-export function estimateBlockHeight(targetDate: Date, currentHeight: number = 880000): number {
+export function estimateBlockHeight(targetDate: Date, currentHeight?: number): number {
+  // Use anchor-based estimation if no current height provided
+  const ANCHOR_HEIGHT = 878000;
+  const ANCHOR_DATE = new Date('2025-01-01T00:00:00Z');
+  const BLOCKS_PER_DAY = 144;
+
+  const baseHeight = currentHeight ?? Math.floor(
+    ANCHOR_HEIGHT + ((Date.now() - ANCHOR_DATE.getTime()) / (24 * 60 * 60 * 1000)) * BLOCKS_PER_DAY
+  );
+
   const now = new Date();
   const diffMs = targetDate.getTime() - now.getTime();
   const diffMinutes = diffMs / (1000 * 60);
   const blocksToAdd = Math.floor(diffMinutes / 10); // ~10 min per block
-  return currentHeight + blocksToAdd;
+  return baseHeight + blocksToAdd;
 }
 
 /**
  * Estimate date from block height
  */
-export function estimateDateFromBlock(blockHeight: number, currentHeight: number = 880000): Date {
+export function estimateDateFromBlock(blockHeight: number, currentHeight?: number): Date {
+  const ANCHOR_HEIGHT = 878000;
+  const ANCHOR_DATE = new Date('2025-01-01T00:00:00Z');
+  const BLOCKS_PER_DAY = 144;
+
+  if (!currentHeight) {
+    currentHeight = Math.floor(
+      ANCHOR_HEIGHT + ((Date.now() - ANCHOR_DATE.getTime()) / (24 * 60 * 60 * 1000)) * BLOCKS_PER_DAY
+    );
+  }
   const blocksDiff = blockHeight - currentHeight;
   const minutesDiff = blocksDiff * 10;
   const date = new Date();
@@ -242,18 +272,6 @@ export {
   generateVaultAddress,
   validateAddress,
   getAddressType,
-} from './scripts/bitcoin-address';
-
-// ============================================
-// BITCOIN ADDRESS UTILITIES
-// ============================================
-
-export {
-  generateP2WPKHAddress,
-  generateP2WSHAddress,
-  generateMultisigAddress,
-  generateTimelockAddress,
-  generateVaultAddress,
-  validateAddress,
-  getAddressType,
+  dateToBlockHeight,
+  estimateCurrentBlockHeight,
 } from './scripts/bitcoin-address';

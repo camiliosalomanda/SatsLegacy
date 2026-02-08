@@ -4,7 +4,7 @@ import { useVaults } from '../../contexts/VaultContext';
 import { useUI } from '../../contexts/UIContext';
 import { useSettings } from '../../contexts/SettingsContext';
 import { getDaysUntilUnlock } from '../../utils/vault-helpers';
-import { generateVaultAddress } from '../../vault/scripts/bitcoin-address';
+import { generateVaultAddress, dateToBlockHeight } from '../../vault/scripts/bitcoin-address';
 import type { Vault } from '../../types/vault';
 
 const electronAPI = typeof window !== 'undefined' ? window.electronAPI : null;
@@ -59,7 +59,7 @@ export function VaultCard({ vault, showDelete = false }: VaultCardProps) {
                 ownerPubkey: loadedVault.ownerPubkey,
                 heirPubkeys,
                 locktime: loadedVault.lockDate
-                  ? Math.floor(new Date(loadedVault.lockDate).getTime() / 1000 / 600) + 500000
+                  ? dateToBlockHeight(loadedVault.lockDate)
                   : undefined,
                 inactivityDays: loadedVault.inactivityTrigger,
               },

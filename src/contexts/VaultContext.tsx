@@ -2,7 +2,8 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import type { Vault, Beneficiary, PendingVaultData } from '../types/vault';
 import type { NetworkType } from '../types/settings';
 import { fetchAddressBalance } from '../utils/api/blockchain';
-import { generateVaultAddress } from '../vault/scripts/bitcoin-address';
+import { generateVaultAddress, dateToBlockHeight } from '../vault/scripts/bitcoin-address';
+import type { VaultConfiguration } from '../vault/creation/validation/compatibility';
 import { useSettings } from './SettingsContext';
 
 // Check if running in Electron
@@ -37,7 +38,7 @@ interface VaultContextValue {
   // Vault CRUD
   loadVaults: () => Promise<void>;
   loadVaultsWithPassword: (password: string) => Promise<{ isDuress: boolean }>;
-  createVault: (config: unknown, name: string, description: string) => void;
+  createVault: (config: VaultConfiguration, name: string, description: string) => void;
   saveVaultWithPassword: (password: string) => Promise<void>;
   deleteVault: (vaultId: string) => Promise<void>;
   saveVaultChanges: (password: string) => Promise<void>;
@@ -76,7 +77,24 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 
   const selectVault = useCallback((vault: Vault | null) => {
     setSelectedVault(vault);
-  }, []);
+    // When a vault is unlocked/selected with full data, update it in the list
+    // and fetch its balance immediately
+    if (vault && vault.address) {
+      const network = settings.network || 'mainnet';
+      fetchAddressBalance(vault.address, network).then(balance => {
+        const updatedVault = { ...vault, balance };
+        setVaults(prev => prev.map(v =>
+          (v.vault_id === vault.vault_id || v.id === vault.id) ? { ...v, ...updatedVault } : v
+        ));
+        setSelectedVault(updatedVault);
+      }).catch(() => {
+        // Still update vault in list even if balance fetch fails
+        setVaults(prev => prev.map(v =>
+          (v.vault_id === vault.vault_id || v.id === vault.id) ? { ...v, ...vault } : v
+        ));
+      });
+    }
+  }, [settings.network]);
 
   const loadVaults = useCallback(async () => {
     setIsLoading(true);
@@ -220,27 +238,27 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     setSelectedVault(null);
   }, []);
 
-  const createVault = useCallback((config: unknown, name: string, description: string) => {
+  const createVault = useCallback((config: VaultConfiguration, name: string, description: string) => {
     const newVault: PendingVaultData = {
       vault_id: crypto.randomUUID(),
       name: name,
       description: description,
       balance: 0,
       balanceUSD: 0,
-      scriptType: (config as { primaryLogic: string }).primaryLogic,
+      scriptType: config.primaryLogic,
       lockDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
       beneficiaries: [],
       status: 'pending',
       inactivityTrigger: 365,
-      infrastructure: (config as { infrastructure: string[] }).infrastructure,
+      infrastructure: config.infrastructure,
       logic: {
-        primary: (config as { primaryLogic: 'timelock' | 'dead_man_switch' | 'multisig_decay' }).primaryLogic,
-        gates: (config as { additionalGates: string[] }).additionalGates
+        primary: config.primaryLogic,
+        gates: config.additionalGates
       },
       modifiers: {
-        staggered: (config as { modifiers: string[] }).modifiers.includes('staggered'),
-        multiBeneficiary: (config as { modifiers: string[] }).modifiers.includes('multi_beneficiary'),
-        decoy: (config as { modifiers: string[] }).modifiers.includes('decoy')
+        staggered: config.modifiers.includes('staggered'),
+        multiBeneficiary: config.modifiers.includes('multi_beneficiary'),
+        decoy: config.modifiers.includes('decoy')
       }
     };
 
@@ -362,7 +380,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
           logic: vault.logic || { primary: 'timelock' },
           ownerPubkey: vault.ownerPubkey,
           heirPubkeys,
-          locktime: vault.lockDate ? Math.floor(new Date(vault.lockDate).getTime() / 1000 / 600) + 500000 : undefined,
+          locktime: vault.lockDate ? dateToBlockHeight(vault.lockDate) : undefined,
           inactivityDays: vault.inactivityTrigger,
         },
         network

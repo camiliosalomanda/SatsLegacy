@@ -19,6 +19,7 @@ import {
   type UTXO,
   type FeeRates
 } from '../../utils/api/blockchain';
+import { dateToBlockHeight, estimateCurrentBlockHeight } from './bitcoin-address';
 
 // Network configurations
 const networks: Record<NetworkType, bitcoin.Network> = {
@@ -268,8 +269,8 @@ export async function createSweepPsbt(
     // IMPORTANT: Use the same locktime formula as VaultContext/bitcoin-address.ts
     // This converts lockDate to a locktime value that matches the original address generation
     const locktime = vault.lockDate
-      ? Math.floor(new Date(vault.lockDate).getTime() / 1000 / 600) + 500000
-      : 880000 + 52560; // Default ~1 year from typical block height
+      ? dateToBlockHeight(vault.lockDate)
+      : estimateCurrentBlockHeight() + 52560; // Default ~1 year from now
 
     witnessScript = buildTimelockWitnessScript(
       vault.ownerPubkey,
