@@ -80,17 +80,23 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     // When a vault is unlocked/selected with full data, update it in the list
     // and fetch its balance immediately
     if (vault && vault.address) {
+      const vaultId = getVaultId(vault);
       const network = settings.network || 'mainnet';
       fetchAddressBalance(vault.address, network).then(balance => {
-        const updatedVault = { ...vault, balance };
+        // Guard: only update if this vault is still selected (prevents race condition
+        // when user rapidly selects different vaults)
+        setSelectedVault(current => {
+          if (current && getVaultId(current) === vaultId) {
+            return { ...vault, balance };
+          }
+          return current;
+        });
         setVaults(prev => prev.map(v =>
-          (v.vault_id === vault.vault_id || v.id === vault.id) ? { ...v, ...updatedVault } : v
+          getVaultId(v) === vaultId ? { ...v, ...vault, balance } : v
         ));
-        setSelectedVault(updatedVault);
       }).catch(() => {
-        // Still update vault in list even if balance fetch fails
         setVaults(prev => prev.map(v =>
-          (v.vault_id === vault.vault_id || v.id === vault.id) ? { ...v, ...vault } : v
+          getVaultId(v) === vaultId ? { ...v, ...vault } : v
         ));
       });
     }

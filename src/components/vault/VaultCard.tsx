@@ -97,7 +97,7 @@ export function VaultCard({ vault, showDelete = false }: VaultCardProps) {
   const daysUntil = getDaysUntilUnlock(vault);
   const progress = vault.scriptType === 'timelock'
     ? Math.min(100, ((730 - daysUntil) / 730) * 100)
-    : Math.min(100, ((vault.inactivityTrigger || 365 - daysUntil) / (vault.inactivityTrigger || 365)) * 100);
+    : Math.min(100, (((vault.inactivityTrigger || 365) - daysUntil) / (vault.inactivityTrigger || 365)) * 100);
 
   const getInfraBadges = () => {
     if (!vault.infrastructure) return null;

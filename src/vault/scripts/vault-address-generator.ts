@@ -9,7 +9,7 @@ import * as bitcoin from 'bitcoinjs-lib';
 import type { NetworkType } from '../../types/settings';
 import type { Vault, Beneficiary } from '../../types/vault';
 import { generatePolicy, compileToMiniscript, extractRedeemInfo, type VaultScriptConfig, type RedeemInfo } from './miniscript';
-import { generateTimelockAddress, generateMultisigAddress, validateAddress, estimateCurrentBlockHeight } from './bitcoin-address';
+import { generateTimelockAddress, generateDeadManSwitchAddress, generateMultisigAddress, validateAddress, estimateCurrentBlockHeight } from './bitcoin-address';
 
 // Network configurations
 const networks: Record<NetworkType, bitcoin.Network> = {
@@ -183,7 +183,6 @@ export function generateVaultAddressFromConfig(
 
     switch (config.logic.primary) {
       case 'timelock':
-      case 'dead_man_switch':
         addressResult = generateTimelockAddress(
           config.ownerPubkey,
           heirPubkeys[0],
@@ -191,6 +190,24 @@ export function generateVaultAddressFromConfig(
           network
         );
         break;
+
+      case 'dead_man_switch': {
+        // Dead man's switch uses relative timelock (CSV), not absolute (CLTV)
+        // Convert days to blocks for the inactivity period
+        const inactivityBlocks = (config.inactivityTrigger || 90) * 144;
+        const dmsResult = generateDeadManSwitchAddress(
+          config.ownerPubkey,
+          heirPubkeys[0],
+          inactivityBlocks,
+          network
+        );
+        addressResult = {
+          address: dmsResult.address,
+          witnessScript: dmsResult.witnessScript,
+          redeemInfo: dmsResult.redeemInfo
+        };
+        break;
+      }
 
       case 'multisig_decay':
         // For multisig, use 2-of-3 with owner + heirs

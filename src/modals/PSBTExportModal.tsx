@@ -14,7 +14,7 @@ type FeePriority = 'fastest' | 'halfHour' | 'hour' | 'economy';
 type SpendPath = 'owner' | 'heir';
 
 export function PSBTExportModal({ vault }: PSBTExportModalProps) {
-  const { closeModal } = useUI();
+  const { closeModal, openModal } = useUI();
   const { settings } = useSettings();
 
   const [destinationAddress, setDestinationAddress] = useState('');
@@ -79,7 +79,13 @@ export function PSBTExportModal({ vault }: PSBTExportModalProps) {
 
   const handleDownloadPsbt = () => {
     if (psbtResult?.psbtBase64) {
-      const blob = new Blob([psbtResult.psbtBase64], { type: 'text/plain' });
+      // Convert base64 to binary for proper .psbt file format
+      const binaryString = atob(psbtResult.psbtBase64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const blob = new Blob([bytes], { type: 'application/octet-stream' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

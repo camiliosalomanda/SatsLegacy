@@ -227,9 +227,21 @@ function encodeSequence(blocks: number, useTimeBased: boolean = false): number {
     // Time-based: value is in 512-second intervals
     // Set bit 22 (0x00400000) for time-based
     const intervals = Math.floor(blocks * 600 / 512); // Convert blocks to 512s intervals
+    if (intervals > 0xFFFF) {
+      throw new Error(
+        `Sequence value overflow: ${intervals} intervals exceeds BIP68 maximum of 65535 ` +
+        `(~388 days in time-based mode). Reduce the inactivity period.`
+      );
+    }
     return 0x00400000 | (intervals & 0xFFFF);
   }
   // Block-based: just the number of blocks (max 65535)
+  if (blocks > 0xFFFF) {
+    throw new Error(
+      `Sequence value overflow: ${blocks} blocks exceeds BIP68 maximum of 65535 ` +
+      `(~455 days). Use time-based encoding for longer periods.`
+    );
+  }
   return blocks & 0xFFFF;
 }
 
@@ -401,7 +413,12 @@ export function generateThreshDecayAddress(
   scriptParts.push(bitcoin.opcodes.OP_ADD);
 
   // Threshold check: <N> OP_EQUAL
-  scriptParts.push(0x50 + initialThreshold); // OP_N
+  // OP_1 through OP_16 are opcodes 0x51-0x60; for values > 16 use script number encoding
+  if (initialThreshold >= 1 && initialThreshold <= 16) {
+    scriptParts.push(0x50 + initialThreshold); // OP_N
+  } else {
+    scriptParts.push(Buffer.from(bitcoin.script.number.encode(initialThreshold)));
+  }
   scriptParts.push(bitcoin.opcodes.OP_EQUAL);
 
   const witnessScript = Buffer.from(bitcoin.script.compile(scriptParts));
@@ -509,8 +526,11 @@ export function generateMultisigDecayAddress(
   // OP_ELSE path: decayedThreshold-of-decayedTotal multisig + CLTV (after decay)
   //
   // For small numbers 1-16, Bitcoin uses OP_1 through OP_16 (0x51-0x60)
-  // OP_1 = 0x51, OP_2 = 0x52, ..., OP_16 = 0x60
-  const opNum = (n: number) => 0x50 + n; // OP_1 = 0x51, OP_2 = 0x52, etc.
+  // For values > 16, use script number encoding (push data)
+  const opNum = (n: number): number | Buffer => {
+    if (n >= 1 && n <= 16) return 0x50 + n;
+    return Buffer.from(bitcoin.script.number.encode(n));
+  };
 
   // bitcoin.script.compile returns Uint8Array in v7, convert to Buffer for compatibility
   const witnessScriptRaw = bitcoin.script.compile([
@@ -697,10 +717,13 @@ export function generateVaultAddress(
 
   switch (logic.primary) {
     case 'timelock': {
+      if (!locktime) {
+        throw new Error('Locktime (block height) is required for timelock vaults. Use dateToBlockHeight() to compute from a date.');
+      }
       const result = generateTimelockAddress(
         normalizedOwnerPubkey,
         normalizedHeirPubkeys[0],
-        locktime || estimateCurrentBlockHeight() + 52560, // Default ~1 year from now
+        locktime,
         network
       );
       return {
@@ -729,6 +752,9 @@ export function generateVaultAddress(
     }
 
     case 'multisig_decay': {
+      if (!locktime && !decayConfig) {
+        throw new Error('Locktime or decay config is required for multisig_decay vaults. Use dateToBlockHeight() to compute from a date.');
+      }
       // Multisig with decaying threshold over time
       // Default config: 2-of-3 initially, 1-of-2 heirs after 1 year
       const config = decayConfig || {
@@ -736,7 +762,7 @@ export function generateVaultAddress(
         initialTotal: Math.min(3, 1 + normalizedHeirPubkeys.length), // owner + up to 2 heirs
         decayedThreshold: 1,
         decayedTotal: Math.min(2, normalizedHeirPubkeys.length),
-        decayAfterBlocks: locktime || estimateCurrentBlockHeight() + 52560, // Default ~1 year from now
+        decayAfterBlocks: locktime!,
       };
 
       const result = generateMultisigDecayAddress(
@@ -756,10 +782,13 @@ export function generateVaultAddress(
     default: {
       // Default to simple timelock
       if (normalizedHeirPubkeys.length > 0) {
+        if (!locktime) {
+          throw new Error('Locktime (block height) is required. Use dateToBlockHeight() to compute from a date.');
+        }
         const result = generateTimelockAddress(
           normalizedOwnerPubkey,
           normalizedHeirPubkeys[0],
-          locktime || estimateCurrentBlockHeight() + 52560,
+          locktime,
           network
         );
         return {

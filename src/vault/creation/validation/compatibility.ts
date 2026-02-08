@@ -575,7 +575,7 @@ export const PRESET_BUNDLES: PresetBundle[] = [
     description: 'Geographic redundancy with Shamir splits plus off-site encrypted backup. Multisig decay means no maintenance required.',
     bestFor: ['Most users', 'Set and forget', '0.5-10 BTC'],
     config: {
-      infrastructure: ['local', 'shamir', 'nostr'],
+      infrastructure: ['local', 'shamir', 'nostr', 'multisig_config'],
       primaryLogic: 'multisig_decay',
       additionalGates: [],
       modifiers: []

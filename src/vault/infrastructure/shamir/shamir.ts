@@ -293,7 +293,12 @@ export function verifyShare(share: ShamirShare): boolean {
 // ============================================
 
 /**
- * Calculate checksum for a share
+ * Calculate checksum for a share using djb2 hash.
+ *
+ * This is a fast, synchronous integrity check (not cryptographic).
+ * It detects accidental corruption during storage/transport.
+ * For share authenticity, rely on the Shamir reconstruction itself
+ * (wrong shares produce garbage, not valid secrets).
  */
 function calculateChecksum(
   data: Uint8Array,
@@ -301,19 +306,18 @@ function calculateChecksum(
   threshold: number,
   totalShares: number
 ): string {
-  // Simple checksum: SHA256 of (data || index || threshold || total), take first 4 bytes
   const toHash = new Uint8Array(data.length + 3)
   toHash.set(data)
   toHash[data.length] = index
   toHash[data.length + 1] = threshold
   toHash[data.length + 2] = totalShares
-  
-  // Use SubtleCrypto if available, otherwise simple XOR checksum
-  let checksum = 0
+
+  // djb2 hash - fast synchronous integrity check
+  let checksum = 5381
   for (let i = 0; i < toHash.length; i++) {
-    checksum = ((checksum << 5) - checksum + toHash[i]) | 0
+    checksum = ((checksum << 5) + checksum + toHash[i]) | 0
   }
-  
+
   return Math.abs(checksum).toString(16).padStart(8, '0').slice(0, 8)
 }
 

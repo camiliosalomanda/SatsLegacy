@@ -207,12 +207,12 @@ export async function createVaultData(
  * Generate a challenge hash from a passphrase using SHA-256.
  * The heir must know the passphrase to satisfy the challenge gate.
  */
-async function generateChallengeHash(passphrase?: string): Promise<string> {
+async function generateChallengeHash(passphrase?: string): Promise<string | undefined> {
   if (!passphrase) {
-    console.warn('[generateChallengeHash] No passphrase provided - challenge gate will not be verifiable');
-    const randomBytes = new Uint8Array(32);
-    crypto.getRandomValues(randomBytes);
-    return Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    // Return undefined so the challenge gate is not added to the policy.
+    // A random hash would create a permanently unspendable heir path since
+    // nobody could ever produce the preimage.
+    return undefined;
   }
   const encoder = new TextEncoder();
   const data = encoder.encode(passphrase);

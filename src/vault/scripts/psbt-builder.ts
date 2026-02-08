@@ -343,6 +343,15 @@ export async function createSweepPsbt(
       inputData.witnessScript = witnessScript;
     }
 
+    // TODO: Add bip32Derivation for hardware wallet compatibility.
+    // This requires storing the original xpub and derivation path in the Vault type,
+    // not just the derived hex pubkey. When available, add:
+    //   inputData.bip32Derivation = [{
+    //     masterFingerprint: getXpubFingerprint(xpub),
+    //     pubkey: Buffer.from(pubkeyHex, 'hex'),
+    //     path: "m/84'/0'/0'/0/0"
+    //   }];
+
     psbt.addInput(inputData);
   }
 

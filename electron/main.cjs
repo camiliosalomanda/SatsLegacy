@@ -514,7 +514,17 @@ ipcMain.handle('vault:update', async (event, { vaultId, vault, password }) => {
     if (!vaultPath || !metaPath) {
       return { success: false, error: 'Invalid vault ID format' };
     }
-    
+
+    // Verify password against existing vault before allowing overwrite
+    if (fs.existsSync(vaultPath)) {
+      try {
+        const existingEncrypted = JSON.parse(fs.readFileSync(vaultPath, 'utf8'));
+        decrypt(existingEncrypted, password);
+      } catch (decryptError) {
+        return { success: false, error: 'Invalid password - cannot update vault' };
+      }
+    }
+
     // Encrypt and save
     const encrypted = encrypt(vault, password);
     fs.writeFileSync(vaultPath, JSON.stringify(encrypted, null, 2));
@@ -890,8 +900,9 @@ ipcMain.handle('duress:checkPassword', async (event, { password }) => {
     const testHash = hashDuressPassword(password, settings.duress.salt);
 
     // Use timing-safe comparison to prevent timing attacks
-    const testBuffer = Buffer.from(testHash, 'hex');
-    const storedBuffer = Buffer.from(settings.duress.passwordHash, 'hex');
+    // hashDuressPassword returns base64-encoded PBKDF2 output
+    const testBuffer = Buffer.from(testHash, 'base64');
+    const storedBuffer = Buffer.from(settings.duress.passwordHash, 'base64');
 
     // Ensure buffers are same length before comparison
     const isDuress = testBuffer.length === storedBuffer.length &&
@@ -944,7 +955,16 @@ ipcMain.handle('duress:createDecoyVault', async (event, { vault }) => {
     }
 
     const vaultId = vault.vault_id || crypto.randomUUID();
+
+    // Validate vaultId to prevent path traversal
+    if (!isValidVaultId(vaultId)) {
+      return { success: false, error: 'Invalid vault ID format' };
+    }
+
     const metaPath = path.join(DECOY_VAULTS_PATH, `${vaultId}.meta`);
+    if (!metaPath.startsWith(DECOY_VAULTS_PATH)) {
+      return { success: false, error: 'Invalid vault path' };
+    }
 
     // Save metadata only (decoy vaults don't need full encrypted data)
     const meta = {
@@ -986,7 +1006,15 @@ ipcMain.handle('duress:createDecoyVault', async (event, { vault }) => {
 // Delete decoy vault
 ipcMain.handle('duress:deleteDecoyVault', async (event, { vaultId }) => {
   try {
+    // Validate vaultId to prevent path traversal
+    if (!isValidVaultId(vaultId)) {
+      return { success: false, error: 'Invalid vault ID format' };
+    }
+
     const metaPath = path.join(DECOY_VAULTS_PATH, `${vaultId}.meta`);
+    if (!metaPath.startsWith(DECOY_VAULTS_PATH)) {
+      return { success: false, error: 'Invalid vault path' };
+    }
 
     if (fs.existsSync(metaPath)) {
       fs.unlinkSync(metaPath);
@@ -1405,7 +1433,7 @@ ipcMain.handle('system:getAppInfo', async () => {
 // NOTIFICATIONS (Email via API Gateway)
 // ============================================
 
-// SECURITY NOTE: This app secret is visible in the built application.
+// SECURITY NOTE: The app secret should be set via environment variable.
 // Electron apps cannot truly hide secrets since they can be decompiled.
 //
 // Mitigations in place:
@@ -1413,10 +1441,8 @@ ipcMain.handle('system:getAppInfo', async () => {
 // 2. Gateway should implement rate limiting per IP/email address
 // 3. Gateway should validate email recipients against allowlist or domain rules
 // 4. Worst case: attacker can send emails through gateway (not access Resend directly)
-//
-// TODO: Consider rotating this secret periodically and updating via app updates
-const EMAIL_API_GATEWAY = 'https://vercel-api-gateway-gules.vercel.app/api/resend';
-const EMAIL_APP_SECRET = '22b0d350f5b480d1dd44b957c846a51c5cb4b4db2a32a3006d36f5620a58b554';
+const EMAIL_API_GATEWAY = process.env.EMAIL_API_GATEWAY || 'https://vercel-api-gateway-gules.vercel.app/api/resend';
+const EMAIL_APP_SECRET = process.env.EMAIL_APP_SECRET || '';
 
 // Email validation
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
