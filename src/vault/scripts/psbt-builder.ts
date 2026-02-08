@@ -253,6 +253,9 @@ export async function createSweepPsbt(
     };
   }
 
+  // Determine if this is a Dead Man's Switch (CSV) vault vs a timelock (CLTV) vault
+  const isDeadManSwitch = vault.logic?.primary === 'dead_man_switch';
+
   // Build witness script - prefer stored witnessScript from vault
   let witnessScript: Buffer | undefined;
   if (options.witnessScript) {
@@ -275,29 +278,45 @@ export async function createSweepPsbt(
       witnessScript = Buffer.from(vault.witnessScript, 'hex');
     }
   } else if (vault.ownerPubkey && vault.beneficiaries?.[0]?.pubkey) {
-    // Fallback: Reconstruct witness script from vault data
-    // IMPORTANT: Use the same locktime formula as VaultContext/bitcoin-address.ts
-    // This converts lockDate to a locktime value that matches the original address generation
-    const locktime = vault.lockDate
-      ? dateToBlockHeight(vault.lockDate)
-      : estimateCurrentBlockHeight() + 52560; // Default ~1 year from now
-
-    witnessScript = buildTimelockWitnessScript(
-      vault.ownerPubkey,
-      vault.beneficiaries[0].pubkey,
-      locktime
-    );
+    // Fallback: Reconstruct witness script from vault data based on vault type
+    if (isDeadManSwitch && vault.sequence) {
+      // Dead Man's Switch (CSV) - use sequence value from vault creation
+      witnessScript = buildDeadManSwitchWitnessScript(
+        vault.ownerPubkey,
+        vault.beneficiaries[0].pubkey,
+        vault.sequence
+      );
+    } else {
+      // Timelock (CLTV) - use lockDate to compute block height
+      // IMPORTANT: Use the same locktime formula as VaultContext/bitcoin-address.ts
+      const locktime = vault.lockDate
+        ? dateToBlockHeight(vault.lockDate)
+        : estimateCurrentBlockHeight() + 52560; // Default ~1 year from now
+      witnessScript = buildTimelockWitnessScript(
+        vault.ownerPubkey,
+        vault.beneficiaries[0].pubkey,
+        locktime
+      );
+    }
   }
 
   // Create PSBT
   const psbt = new bitcoin.Psbt({ network: btcNetwork });
 
-  // Set locktime for heir spending path (required for CLTV)
-  // IMPORTANT: nLockTime MUST match the locktime embedded in the witness script's
-  // OP_CHECKLOCKTIMEVERIFY, which was computed via dateToBlockHeight() during address
-  // generation. Using any other formula will produce a mismatch and the tx will be rejected.
-  if (isTimelockSpend && vault.lockDate) {
-    psbt.setLocktime(dateToBlockHeight(vault.lockDate));
+  // Set locktime/sequence for heir spending path
+  // The requirements differ based on vault type:
+  // - Timelock (CLTV): nLockTime must match the script's locktime, nSequence < 0xFFFFFFFF
+  // - Dead Man's Switch (CSV): nSequence must match the script's sequence value, nLockTime = 0
+  if (isTimelockSpend) {
+    if (isDeadManSwitch) {
+      // CSV heir claim: nLockTime must be 0 (or at least not trigger CLTV),
+      // nSequence is set per-input below to the vault's CSV sequence value
+      psbt.setLocktime(0);
+    } else if (vault.lockDate) {
+      // CLTV heir claim: nLockTime MUST match the locktime embedded in the witness
+      // script's OP_CHECKLOCKTIMEVERIFY, computed via dateToBlockHeight()
+      psbt.setLocktime(dateToBlockHeight(vault.lockDate));
+    }
   }
 
   // Add inputs
@@ -305,10 +324,23 @@ export async function createSweepPsbt(
     // Fetch the raw transaction to get the full output script
     const rawTxHex = await fetchRawTransaction(utxo.txid, network);
 
+    // Determine the correct nSequence value for this input:
+    // - Owner path: 0xFFFFFFFF (no restrictions)
+    // - Heir CLTV path: 0xFFFFFFFE (enable nLockTime, disable RBF)
+    // - Heir CSV path: vault.sequence (the CSV value that satisfies OP_CHECKSEQUENCEVERIFY)
+    let inputSequence = 0xffffffff;
+    if (isTimelockSpend) {
+      if (isDeadManSwitch && vault.sequence) {
+        inputSequence = vault.sequence;
+      } else {
+        inputSequence = 0xfffffffe;
+      }
+    }
+
     const inputData: bitcoin.PsbtTxInput & { witnessUtxo?: { script: Uint8Array; value: bigint }; witnessScript?: Buffer } = {
       hash: utxo.txid,
       index: utxo.vout,
-      sequence: isTimelockSpend ? 0xfffffffe : 0xffffffff, // Enable locktime for heir path
+      sequence: inputSequence,
     };
 
     if (rawTxHex) {
@@ -566,6 +598,7 @@ export function buildDeadManSwitchWitnessScript(
 export interface RefreshPSBTResult extends PSBTResult {
   newAddress: string;        // The new vault address (funds sent here)
   refreshType: 'same' | 'new'; // Whether using same or new vault address
+  newWitnessScript?: string; // Hex witness script for the new address (needed for future spends)
 }
 
 export interface RefreshOptions {
@@ -698,11 +731,11 @@ export async function createRefreshPsbt(
     };
   }
 
-  // Build witness script
+  // Build witness script for SPENDING the current vault's UTXOs.
+  // IMPORTANT: This must be the CURRENT vault's witness script, not the new address's.
+  // options.newWitnessScript is for the OUTPUT address (stored for future spends).
   let witnessScript: Buffer | undefined;
-  if (options.newWitnessScript) {
-    witnessScript = Buffer.from(options.newWitnessScript, 'hex');
-  } else if (vault.witnessScript) {
+  if (vault.witnessScript) {
     // Handle both hex string format and comma-separated number format (from IPC serialization)
     if (typeof vault.witnessScript === 'string' && vault.witnessScript.includes(',')) {
       const bytes = vault.witnessScript.split(',').map(n => {
@@ -716,13 +749,21 @@ export async function createRefreshPsbt(
     } else {
       witnessScript = Buffer.from(vault.witnessScript, 'hex');
     }
-  } else if (vault.ownerPubkey && vault.beneficiaries?.[0]?.pubkey && vault.sequence) {
-    // Build CSV witness script from vault data
-    witnessScript = buildDeadManSwitchWitnessScript(
-      vault.ownerPubkey,
-      vault.beneficiaries[0].pubkey,
-      vault.sequence
-    );
+  } else if (vault.ownerPubkey && vault.beneficiaries?.[0]?.pubkey) {
+    // Fallback: Reconstruct from vault data based on vault type
+    if (vault.logic?.primary === 'dead_man_switch' && vault.sequence) {
+      witnessScript = buildDeadManSwitchWitnessScript(
+        vault.ownerPubkey,
+        vault.beneficiaries[0].pubkey,
+        vault.sequence
+      );
+    } else if (vault.lockDate) {
+      witnessScript = buildTimelockWitnessScript(
+        vault.ownerPubkey,
+        vault.beneficiaries[0].pubkey,
+        dateToBlockHeight(vault.lockDate)
+      );
+    }
   }
 
   // Create PSBT
@@ -794,6 +835,12 @@ export async function createRefreshPsbt(
     destinationAddress,
     newAddress: destinationAddress,
     refreshType,
+    // Return the new address's witness script so callers can store it for future spends.
+    // If refreshing to the same address, the witness script is unchanged.
+    // If refreshing to a new address, the caller MUST store this to spend from the new address.
+    newWitnessScript: options.newWitnessScript || (vault.witnessScript && !vault.witnessScript.includes(',')
+      ? vault.witnessScript
+      : witnessScript?.toString('hex')),
   };
 }
 
