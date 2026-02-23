@@ -9,23 +9,16 @@ import * as bitcoin from 'bitcoinjs-lib';
 import BIP32Factory from 'bip32';
 import * as ecc from 'tiny-secp256k1';
 import { Buffer } from 'buffer';
+import type { SpendPath, MultisigDecayConfig } from './types';
+
+// Re-export shared types so existing consumers that import from bitcoin-address.ts still work
+export type { SpendPath, MultisigDecayConfig } from './types';
 
 // ============================================
 // TYPES
 // ============================================
 
-/** Describes a single spending path for a vault script */
-export interface SpendPath {
-  name: string;
-  description: string;
-  witness?: string;
-  sequence?: number;
-  availableNow?: boolean;
-  availableAfterBlock?: number;
-  combinations?: string[][];
-  note?: string;
-  requirements?: string[];
-}
+// SpendPath is imported+re-exported from ./types
 
 /** Redeem information returned by address generation functions */
 export interface VaultRedeemInfo {
@@ -383,13 +376,13 @@ export function generateDeadManSwitchAddress(
         {
           name: 'Owner (Check-in)',
           description: 'Owner can spend anytime - resets the inactivity timer',
-          witness: '<signature> OP_TRUE <witnessScript>',
+          witness: '<signature> TRUE <witnessScript>',
           sequence: 0xFFFFFFFF, // No sequence requirement for owner
         },
         {
           name: 'Heir (Claim)',
           description: `Heir can spend after ${sequenceBlocks} blocks (~${estimatedDays} days) of owner inactivity`,
-          witness: '<signature> OP_FALSE <witnessScript>',
+          witness: '<signature> FALSE <witnessScript>',
           sequence: sequence, // Must set nSequence to this value
         },
       ],
@@ -397,16 +390,7 @@ export function generateDeadManSwitchAddress(
   };
 }
 
-/**
- * Multisig decay configuration
- */
-export interface MultisigDecayConfig {
-  initialThreshold: number;  // e.g., 2 (need 2 sigs initially)
-  initialTotal: number;      // e.g., 3 (out of 3 keys)
-  decayedThreshold: number;  // e.g., 1 (need 1 sig after decay)
-  decayedTotal: number;      // e.g., 2 (out of 2 heir keys)
-  decayAfterBlocks: number;  // Block height when decay activates
-}
+// MultisigDecayConfig is imported+re-exported from ./types
 
 /**
  * Generate a threshold-based decay address using valid Miniscript
@@ -643,14 +627,14 @@ export function generateMultisigDecayAddress(
         {
           name: 'Before Decay',
           description: `Requires ${config.initialThreshold} of ${config.initialTotal} signatures (${initialKeyLabels.join(', ')})`,
-          witness: `OP_0 <sig1> <sig2> ... OP_TRUE <witnessScript>`,
+          witness: `OP_0 <sig1> <sig2> ... TRUE <witnessScript>`,
           availableNow: true,
           combinations: generateCombinations(initialKeyLabels, config.initialThreshold),
         },
         {
           name: 'After Decay',
           description: `After block ${config.decayAfterBlocks}: requires only ${config.decayedThreshold} of ${config.decayedTotal} heir signatures (${decayedKeyLabels.join(', ')})`,
-          witness: `OP_0 <heir_sig> OP_FALSE <witnessScript>`,
+          witness: `OP_0 <heir_sig> FALSE <witnessScript>`,
           availableAfterBlock: config.decayAfterBlocks,
           combinations: generateCombinations(decayedKeyLabels, config.decayedThreshold),
           note: 'Owner key NOT accepted on this path',
@@ -744,12 +728,12 @@ export function generateTimelockAddress(
         {
           name: 'Owner',
           description: 'Owner can spend anytime',
-          witness: '<signature> <owner_pubkey> OP_TRUE',
+          witness: '<signature> TRUE <witnessScript>',
         },
         {
           name: 'Heir',
           description: `Heir can spend after block ${locktime}`,
-          witness: '<signature> <heir_pubkey> OP_FALSE',
+          witness: '<signature> FALSE <witnessScript>',
         },
       ],
     },

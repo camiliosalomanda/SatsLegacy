@@ -8,7 +8,8 @@
 import type { NetworkType } from '../../types/settings';
 import type { Vault, Beneficiary } from '../../types/vault';
 import { generatePolicy, compileToMiniscript, extractRedeemInfo, type VaultScriptConfig, type RedeemInfo } from './miniscript';
-import { generateTimelockAddress, generateDeadManSwitchAddress, generateMultisigAddress, validateAddress, estimateCurrentBlockHeight, type VaultRedeemInfo } from './bitcoin-address';
+import { generateTimelockAddress, generateDeadManSwitchAddress, generateMultisigDecayAddress, validateAddress, estimateCurrentBlockHeight, type VaultRedeemInfo } from './bitcoin-address';
+import type { MultisigDecayConfig } from './types';
 
 export interface VaultAddressResult {
   address: string;
@@ -95,7 +96,7 @@ function buildScriptConfig(config: VaultAddressConfig): VaultScriptConfig {
   return {
     keys,
     timelocks: [{
-      type: 'absolute',
+      type: config.logic.primary === 'dead_man_switch' ? 'relative' : 'absolute',
       value: lockBlocks,
       estimatedDate: new Date(Date.now() + (config.inactivityTrigger || 365) * 24 * 60 * 60 * 1000)
     }],
@@ -202,24 +203,29 @@ export function generateVaultAddressFromConfig(
         break;
       }
 
-      case 'multisig_decay':
-        // For multisig, use 2-of-3 with owner + heirs
-        const allKeys = [config.ownerPubkey, ...heirPubkeys.slice(0, 2)];
-        const multisigResult = generateMultisigAddress(allKeys, 2, network);
+      case 'multisig_decay': {
+        // Build decay config: 2-of-3 initially, 1-of-2 heirs after lockBlocks
+        // Mirrors the default config in bitcoin-address.ts generateVaultAddress()
+        const decayConfig: MultisigDecayConfig = {
+          initialThreshold: 2,
+          initialTotal: Math.min(3, 1 + heirPubkeys.length), // owner + up to 2 heirs
+          decayedThreshold: 1,
+          decayedTotal: Math.min(2, heirPubkeys.length),
+          decayAfterBlocks: lockBlocks,
+        };
+        const decayResult = generateMultisigDecayAddress(
+          config.ownerPubkey,
+          heirPubkeys,
+          decayConfig,
+          network
+        );
         addressResult = {
-          address: multisigResult.address,
-          witnessScript: multisigResult.redeemScript,
-          redeemInfo: {
-            keys: allKeys,
-            threshold: 2,
-            spendPaths: [{
-              name: 'Multisig Spend',
-              description: 'Requires 2 of 3 signatures',
-              requirements: allKeys.map((_, i) => `Key ${i + 1}`)
-            }]
-          }
+          address: decayResult.address,
+          witnessScript: decayResult.witnessScript,
+          redeemInfo: decayResult.redeemInfo,
         };
         break;
+      }
 
       default:
         addressResult = generateTimelockAddress(
@@ -243,7 +249,7 @@ export function generateVaultAddressFromConfig(
       miniscript: miniscriptResult.miniscript,
       redeemInfo,
       network,
-      isValid: isAddressValid && miniscriptResult.isValid
+      isValid: isAddressValid
     };
   } catch (error) {
     console.error('Address generation failed:', error);

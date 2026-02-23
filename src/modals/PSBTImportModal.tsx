@@ -42,6 +42,12 @@ export function PSBTImportModal({ vault }: PSBTImportModalProps) {
   const [txResult, setTxResult] = useState<{ txid: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // Derive default spend path from vault logic type
+  const isMultisigDecay = vault.logic?.primary === 'multisig_decay';
+  const [spendPath, setSpendPath] = useState<'owner' | 'heir' | 'multisig_before_decay' | 'multisig_after_decay'>(
+    isMultisigDecay ? 'multisig_before_decay' : 'owner'
+  );
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,7 +96,7 @@ export function PSBTImportModal({ vault }: PSBTImportModalProps) {
 
     try {
       // Finalize the PSBT (extract the signed transaction)
-      const result = finalizePsbt(parsedPsbt.raw, settings.network);
+      const result = finalizePsbt(parsedPsbt.raw, settings.network, spendPath);
 
       if (result.error || !result.txHex) {
         setError(result.error || 'Failed to finalize PSBT - it may not be fully signed');
@@ -277,6 +283,64 @@ export function PSBTImportModal({ vault }: PSBTImportModalProps) {
                     <p className="text-zinc-500">Outputs</p>
                     <p className="text-white font-medium">{parsedPsbt.outputCount}</p>
                   </div>
+                </div>
+              </div>
+
+              {/* Spend Path Selector */}
+              <div>
+                <label className="block text-sm text-zinc-400 mb-2">Spend Path</label>
+                <div className={`grid ${isMultisigDecay ? 'grid-cols-2' : 'grid-cols-2'} gap-2`}>
+                  {isMultisigDecay ? (
+                    <>
+                      <button
+                        onClick={() => setSpendPath('multisig_before_decay')}
+                        className={`p-3 rounded-xl border text-left transition-colors ${
+                          spendPath === 'multisig_before_decay'
+                            ? 'bg-orange-500/10 border-orange-500/50 text-white'
+                            : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-600'
+                        }`}
+                      >
+                        <p className="font-medium text-sm">Before Decay</p>
+                        <p className="text-xs mt-1 opacity-70">Multi-sig threshold spend</p>
+                      </button>
+                      <button
+                        onClick={() => setSpendPath('multisig_after_decay')}
+                        className={`p-3 rounded-xl border text-left transition-colors ${
+                          spendPath === 'multisig_after_decay'
+                            ? 'bg-orange-500/10 border-orange-500/50 text-white'
+                            : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-600'
+                        }`}
+                      >
+                        <p className="font-medium text-sm">After Decay</p>
+                        <p className="text-xs mt-1 opacity-70">Reduced threshold + timelock</p>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => setSpendPath('owner')}
+                        className={`p-3 rounded-xl border text-left transition-colors ${
+                          spendPath === 'owner'
+                            ? 'bg-orange-500/10 border-orange-500/50 text-white'
+                            : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-600'
+                        }`}
+                      >
+                        <p className="font-medium text-sm">Owner</p>
+                        <p className="text-xs mt-1 opacity-70">Spend anytime with owner key</p>
+                      </button>
+                      <button
+                        onClick={() => setSpendPath('heir')}
+                        className={`p-3 rounded-xl border text-left transition-colors ${
+                          spendPath === 'heir'
+                            ? 'bg-orange-500/10 border-orange-500/50 text-white'
+                            : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-600'
+                        }`}
+                      >
+                        <p className="font-medium text-sm">Heir</p>
+                        <p className="text-xs mt-1 opacity-70">After timelock expires</p>
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 

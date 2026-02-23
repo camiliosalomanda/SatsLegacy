@@ -7,6 +7,10 @@
 
 import type { VaultConfiguration, InheritanceLogic } from '../creation/validation/compatibility';
 import { compilePolicy as compileMiniscriptPolicy, compileMiniscript as compileMiniscriptToAsm, satisfier } from '@bitcoinerlab/miniscript';
+import type { SpendPath, MultisigDecayConfig } from './types';
+
+// Re-export shared types so existing consumers that import from miniscript.ts still work
+export type { SpendPath, MultisigDecayConfig } from './types';
 
 // ============================================
 // TYPE DEFINITIONS
@@ -43,13 +47,7 @@ export interface DuressConfig {
   duressKeyIndex: number  // Which key triggers duress
 }
 
-export interface MultisigDecayConfig {
-  initialThreshold: number  // e.g., 2
-  initialTotal: number      // e.g., 3
-  decayedThreshold: number  // e.g., 1
-  decayedTotal: number      // e.g., 2
-  decayAfterBlocks: number
-}
+// MultisigDecayConfig is imported+re-exported from ./types
 
 export interface StaggeredReleaseConfig {
   stages: {
@@ -73,12 +71,7 @@ export interface RedeemInfo {
   spendPaths: SpendPath[]
 }
 
-export interface SpendPath {
-  name: string
-  description: string
-  requirements: string[]
-  availableAfter?: Date
-}
+// SpendPath is imported+re-exported from ./types
 
 // ============================================
 // POLICY TEMPLATES
@@ -208,12 +201,12 @@ export function generatePolicy(config: VaultScriptConfig): string {
 
   switch (config.logic) {
     case 'timelock': {
-      const lockBlocks = config.timelocks[0]?.value || 52560
+      const lockBlocks = config.timelocks[0]?.value ?? 52560
       heirCondition = `and(pk(${heirKeys[0]}),after(${lockBlocks}))`
       break
     }
     case 'dead_man_switch': {
-      const timeoutBlocks = config.timelocks[0]?.value || 4320
+      const timeoutBlocks = config.timelocks[0]?.value ?? 4320
       heirCondition = `and(pk(${heirKeys[0]}),older(${timeoutBlocks}))`
       break
     }
@@ -261,7 +254,12 @@ export function generateStaggeredPolicies(
     return [{ stage: 0, percent: 100, policy: generatePolicy(config) }]
   }
 
-  const baseLockBlocks = config.timelocks[0]?.value || 52560
+  // LIMITATION: Staggered releases with dead_man_switch add stage.blocksAfterTrigger to a
+  // relative timelock base. This means staggered stages are additive offsets from the base
+  // inactivity period, NOT independent CSV timers. Each stage's CSV value will be larger
+  // than the previous, but they all start counting from the same UTXO creation time.
+  // For true independent timers per stage, each stage would need its own UTXO.
+  const baseLockBlocks = config.timelocks[0]?.value ?? 52560
 
   return config.staggeredConfig.stages.map((stage, index) => {
     const timelockType = config.logic === 'dead_man_switch' ? 'relative' as const : 'absolute' as const;
@@ -386,23 +384,6 @@ export function getWitnessSatisfaction(miniscript: string): {
 }
 
 // ============================================
-// ADDRESS DERIVATION
-// ============================================
-
-/**
- * Derive P2WSH address from witness script
- */
-export function deriveAddress(
-  witnessScript: string,
-  network: 'mainnet' | 'testnet' = 'mainnet'
-): string {
-  // This would use bitcoinjs-lib in production
-  // const scriptHash = bitcoin.crypto.sha256(Buffer.from(witnessScript, 'hex'))
-  // return bitcoin.address.toBech32(scriptHash, 0, network === 'mainnet' ? 'bc' : 'tb')
-  throw new Error('Address derivation requires bitcoinjs-lib')
-}
-
-// ============================================
 // REDEEM INFO EXTRACTION
 // ============================================
 
@@ -448,14 +429,8 @@ export function extractRedeemInfo(
       })
     }
 
-    // Duress path
-    if (config.additionalGates.includes('duress')) {
-      spendPaths.push({
-        name: 'Duress Escape',
-        description: 'Wrong PIN routes funds to burn/donation address',
-        requirements: ['Duress key/PIN']
-      })
-    }
+    // Duress is handled at the application layer (decoy vaults),
+    // NOT in the on-chain script. No spend path entry needed.
   }
 
   // Collect only the keys that appear in at least one spend path
@@ -531,6 +506,9 @@ export function analyzePolicy(policy: string): {
     hasChallenge: policy.includes('sha256('),
     // Oracle adds an extra pk() wrapping the heir condition.
     // Count nested pk() calls - more than 2 in an and(pk(...),and(pk(...) pattern suggests oracle.
+    // LIMITATION: This heuristic can false-positive on multisig_decay policies (which have 3+ pk()
+    // calls in thresh() wrappers) or policies with backup keys. A more robust approach would parse
+    // the policy AST, but for display purposes this is acceptable.
     hasOracle: keys.length > 2 && (policy.includes('and(pk(') && (policy.match(/and\(pk\(/g) || []).length >= 2)
   }
 }

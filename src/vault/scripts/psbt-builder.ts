@@ -21,6 +21,26 @@ import {
 } from '../../utils/api/blockchain';
 import { dateToBlockHeight, estimateCurrentBlockHeight } from './bitcoin-address';
 
+/**
+ * Parse a witness script string into a Buffer.
+ * Handles both hex string format ("632103...") and comma-separated byte format ("99,33,3,54,...").
+ */
+function parseWitnessScript(witnessScriptStr: string): Buffer {
+  if (typeof witnessScriptStr === 'string' && witnessScriptStr.includes(',')) {
+    // Comma-separated numbers format: "99,33,3,54,..."
+    const bytes = witnessScriptStr.split(',').map(n => {
+      const val = parseInt(n.trim(), 10);
+      if (isNaN(val) || val < 0 || val > 255) {
+        throw new Error(`Invalid byte value in witnessScript: "${n.trim()}". Expected 0-255.`);
+      }
+      return val;
+    });
+    return Buffer.from(bytes);
+  }
+  // Hex string format: "632103..."
+  return Buffer.from(witnessScriptStr, 'hex');
+}
+
 // Network configurations
 // Note: Signet uses testnet address format (tb1...) and network parameters,
 // so bitcoin.networks.testnet is correct for address encoding/decoding.
@@ -59,8 +79,16 @@ export interface SweepOptions {
 /**
  * Estimate virtual size of a P2WSH spend transaction
  * This is an approximation - actual size depends on witness data
+ *
+ * @param scriptType - Optional: 'multisig_decay' uses larger witness estimate (~300-350 bytes)
+ *                     since it includes OP_0 dummy + multiple signatures + branch flag + larger script
  */
-function estimateVsize(inputCount: number, outputCount: number, isTimelockSpend: boolean): number {
+function estimateVsize(
+  inputCount: number,
+  outputCount: number,
+  isTimelockSpend: boolean,
+  scriptType?: 'multisig_decay'
+): number {
   // Base transaction overhead
   const baseSize = 10; // version (4) + locktime (4) + segwit marker/flag (2)
 
@@ -71,9 +99,18 @@ function estimateVsize(inputCount: number, outputCount: number, isTimelockSpend:
   // Output size for P2WPKH: value (8) + scriptPubKey length (1) + scriptPubKey (22) = 31 bytes
   const outputSize = 31 * outputCount;
 
-  // Witness size estimation for P2WSH timelock script
-  // Signature (~72 bytes) + pubkey (33 bytes) + push ops + witness script (~80-100 bytes)
-  const witnessPerInput = isTimelockSpend ? 200 : 150;
+  // Witness size estimation depends on script type:
+  // - multisig_decay: OP_0 + 2 sigs (~144) + branch flag + witness script (~150) ≈ 300-350 bytes
+  // - single-sig timelock/DMS: sig (~72) + branch flag + witness script (~80-100) ≈ 200 bytes
+  // - single-sig owner: sig (~72) + branch flag + witness script (~80) ≈ 150 bytes
+  let witnessPerInput: number;
+  if (scriptType === 'multisig_decay') {
+    witnessPerInput = 325;
+  } else if (isTimelockSpend) {
+    witnessPerInput = 200;
+  } else {
+    witnessPerInput = 150;
+  }
 
   // Virtual size = base + inputs + outputs + (witness / 4)
   const weight = (baseSize + inputSize + outputSize) * 4 + (witnessPerInput * inputCount);
@@ -217,7 +254,8 @@ export async function createSweepPsbt(
 
   // Estimate transaction size and fee
   const isTimelockSpend = options.spendPath === 'heir';
-  const estimatedVsize = estimateVsize(utxos.length, 1, isTimelockSpend);
+  const isMultisigDecay = vault.logic?.primary === 'multisig_decay';
+  const estimatedVsize = estimateVsize(utxos.length, 1, isTimelockSpend, isMultisigDecay ? 'multisig_decay' : undefined);
   const fee = Math.ceil(estimatedVsize * feeRate);
 
   // Calculate output value
@@ -262,21 +300,7 @@ export async function createSweepPsbt(
     witnessScript = Buffer.from(options.witnessScript, 'hex');
   } else if (vault.witnessScript) {
     // Use the stored witness script from vault creation
-    // Handle both hex string format and comma-separated number format (from IPC serialization)
-    if (typeof vault.witnessScript === 'string' && vault.witnessScript.includes(',')) {
-      // Comma-separated numbers format: "99,33,3,54,..."
-      const bytes = vault.witnessScript.split(',').map(n => {
-        const val = parseInt(n.trim(), 10);
-        if (isNaN(val) || val < 0 || val > 255) {
-          throw new Error(`Invalid byte value in witnessScript: "${n.trim()}". Expected 0-255.`);
-        }
-        return val;
-      });
-      witnessScript = Buffer.from(bytes);
-    } else {
-      // Hex string format: "632103..."
-      witnessScript = Buffer.from(vault.witnessScript, 'hex');
-    }
+    witnessScript = parseWitnessScript(vault.witnessScript);
   } else if (vault.ownerPubkey && vault.beneficiaries?.[0]?.pubkey) {
     // Fallback: Reconstruct witness script from vault data based on vault type
     if (isDeadManSwitch && vault.sequence) {
@@ -485,19 +509,62 @@ export function combinePsbts(
 }
 
 /**
+ * Detect whether a witness script uses CHECKMULTISIG or CHECKSIG.
+ * Decompiles the script and looks for the relevant opcodes.
+ */
+function detectScriptType(witnessScript: Buffer): 'multisig' | 'checksig' {
+  try {
+    const decompiled = bitcoin.script.decompile(witnessScript);
+    if (decompiled) {
+      for (const op of decompiled) {
+        if (op === bitcoin.opcodes.OP_CHECKMULTISIG || op === bitcoin.opcodes.OP_CHECKMULTISIGVERIFY) {
+          return 'multisig';
+        }
+      }
+    }
+  } catch {
+    // Fall through to default
+  }
+  return 'checksig';
+}
+
+/**
+ * Serialize a witness stack into the finalScriptWitness format expected by bitcoinjs-lib.
+ */
+function serializeWitnessStack(witnessStack: Buffer[]): Buffer {
+  const parts: Buffer[] = [];
+  parts.push(Buffer.from([witnessStack.length]));
+  for (const item of witnessStack) {
+    const buf = Buffer.isBuffer(item) ? item : Buffer.from(item);
+    if (buf.length < 0xfd) {
+      parts.push(Buffer.from([buf.length]));
+    } else if (buf.length <= 0xffff) {
+      parts.push(Buffer.from([0xfd, buf.length & 0xff, (buf.length >> 8) & 0xff]));
+    }
+    parts.push(buf);
+  }
+  return Buffer.concat(parts);
+}
+
+/**
  * Finalize a fully signed PSBT and extract the transaction.
  *
- * Uses a custom finalizer for P2WSH OP_IF/OP_ELSE vault scripts.
- * The witness stack for these scripts is:
+ * Uses a custom finalizer for P2WSH vault scripts.
+ *
+ * For CHECKSIG scripts (timelock / dead man's switch):
  * - Owner path (OP_IF):  [signature, 0x01 (TRUE), witnessScript]
  * - Heir path (OP_ELSE): [signature, 0x00 (FALSE/empty), witnessScript]
  *
- * @param spendPath - Which branch of the IF/ELSE script is being used
+ * For CHECKMULTISIG scripts (multisig decay):
+ * - Before decay (OP_IF):  [OP_0, sig1, sig2, ..., 0x01 (TRUE), witnessScript]
+ * - After decay (OP_ELSE): [OP_0, sig1, ..., 0x00 (FALSE/empty), witnessScript]
+ *
+ * @param spendPath - Which branch of the script is being used
  */
 export function finalizePsbt(
   psbtString: string,
   network: NetworkType = 'mainnet',
-  spendPath: 'owner' | 'heir' = 'owner'
+  spendPath: 'owner' | 'heir' | 'multisig_before_decay' | 'multisig_after_decay' = 'owner'
 ): { txHex?: string; txId?: string; error?: string } {
   const btcNetwork = networks[network];
 
@@ -509,43 +576,45 @@ export function finalizePsbt(
       psbt = bitcoin.Psbt.fromHex(psbtString, { network: btcNetwork });
     }
 
-    // Custom finalizer for P2WSH OP_IF/OP_ELSE vault scripts
+    // Custom finalizer for P2WSH vault scripts
     for (let i = 0; i < psbt.inputCount; i++) {
       psbt.finalizeInput(i, (_inputIndex: number, input: any) => {
-        // Get the signature from partial signatures
         if (!input.partialSig || input.partialSig.length === 0) {
           throw new Error(`Input ${i} has no signatures`);
         }
-        const sig = input.partialSig[0].signature;
         const witnessScript = input.witnessScript;
-
         if (!witnessScript) {
           throw new Error(`Input ${i} has no witness script`);
         }
 
-        // Build witness stack based on spend path
-        // Owner path (OP_IF): [sig, TRUE, witnessScript]
-        // Heir path (OP_ELSE): [sig, empty (FALSE), witnessScript]
-        const branchFlag = spendPath === 'owner'
-          ? Buffer.from([0x01])  // TRUE = OP_IF branch
-          : Buffer.alloc(0);     // empty = OP_ELSE branch
+        const scriptType = detectScriptType(Buffer.from(witnessScript));
+        let witnessStack: Buffer[];
 
-        const witnessStack = [sig, branchFlag, witnessScript];
+        if (scriptType === 'multisig') {
+          // CHECKMULTISIG witness: [OP_0, sig1, sig2, ..., branchFlag, witnessScript]
+          // OP_0 is the dummy element required by CHECKMULTISIG bug
+          const sigs = input.partialSig.map((ps: any) => ps.signature);
+          const branchFlag = (spendPath === 'owner' || spendPath === 'multisig_before_decay')
+            ? Buffer.from([0x01])  // TRUE = OP_IF branch (before decay)
+            : Buffer.alloc(0);     // empty = OP_ELSE branch (after decay)
 
-        // Serialize witness stack
-        const parts: Buffer[] = [];
-        parts.push(Buffer.from([witnessStack.length]));
-        for (const item of witnessStack) {
-          const buf = Buffer.isBuffer(item) ? item : Buffer.from(item);
-          if (buf.length < 0xfd) {
-            parts.push(Buffer.from([buf.length]));
-          } else if (buf.length <= 0xffff) {
-            parts.push(Buffer.from([0xfd, buf.length & 0xff, (buf.length >> 8) & 0xff]));
-          }
-          parts.push(buf);
+          witnessStack = [
+            Buffer.alloc(0), // OP_0 dummy for CHECKMULTISIG
+            ...sigs,
+            branchFlag,
+            Buffer.from(witnessScript),
+          ];
+        } else {
+          // CHECKSIG witness: [sig, branchFlag, witnessScript]
+          const sig = input.partialSig[0].signature;
+          const branchFlag = (spendPath === 'owner')
+            ? Buffer.from([0x01])  // TRUE = OP_IF branch
+            : Buffer.alloc(0);     // empty = OP_ELSE branch
+
+          witnessStack = [sig, branchFlag, Buffer.from(witnessScript)];
         }
 
-        return { finalScriptWitness: Buffer.concat(parts) };
+        return { finalScriptWitness: serializeWitnessStack(witnessStack) };
       });
     }
 
@@ -710,7 +779,8 @@ export async function createRefreshPsbt(
 
   // Calculate totals
   const totalInput = utxos.reduce((sum, utxo) => sum + utxo.value, 0);
-  const estimatedVsize = estimateVsize(utxos.length, 1, false); // Owner spend, not heir
+  const isMultisigDecayRefresh = vault.logic?.primary === 'multisig_decay';
+  const estimatedVsize = estimateVsize(utxos.length, 1, false, isMultisigDecayRefresh ? 'multisig_decay' : undefined); // Owner spend, not heir
   const fee = Math.ceil(estimatedVsize * feeRate);
   const totalOutput = totalInput - fee;
 
@@ -736,19 +806,7 @@ export async function createRefreshPsbt(
   // options.newWitnessScript is for the OUTPUT address (stored for future spends).
   let witnessScript: Buffer | undefined;
   if (vault.witnessScript) {
-    // Handle both hex string format and comma-separated number format (from IPC serialization)
-    if (typeof vault.witnessScript === 'string' && vault.witnessScript.includes(',')) {
-      const bytes = vault.witnessScript.split(',').map(n => {
-        const val = parseInt(n.trim(), 10);
-        if (isNaN(val) || val < 0 || val > 255) {
-          throw new Error(`Invalid byte value in witnessScript: "${n.trim()}". Expected 0-255.`);
-        }
-        return val;
-      });
-      witnessScript = Buffer.from(bytes);
-    } else {
-      witnessScript = Buffer.from(vault.witnessScript, 'hex');
-    }
+    witnessScript = parseWitnessScript(vault.witnessScript);
   } else if (vault.ownerPubkey && vault.beneficiaries?.[0]?.pubkey) {
     // Fallback: Reconstruct from vault data based on vault type
     if (vault.logic?.primary === 'dead_man_switch' && vault.sequence) {
