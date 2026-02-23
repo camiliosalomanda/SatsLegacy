@@ -17,6 +17,7 @@ export function PSBTExportModal({ vault }: PSBTExportModalProps) {
   const { closeModal, openModal } = useUI();
   const { settings } = useSettings();
 
+  const isMultisigDecay = vault.logic?.primary === 'multisig_decay';
   const [destinationAddress, setDestinationAddress] = useState('');
   const [feePriority, setFeePriority] = useState<FeePriority>('hour');
   const [spendPath, setSpendPath] = useState<SpendPath>('owner');
@@ -171,8 +172,10 @@ export function PSBTExportModal({ vault }: PSBTExportModalProps) {
                             : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-600'
                         }`}
                       >
-                        <p className="font-medium">Owner</p>
-                        <p className="text-xs mt-1 opacity-70">Spend anytime with owner key</p>
+                        <p className="font-medium">{isMultisigDecay ? 'Before Decay' : 'Owner'}</p>
+                        <p className="text-xs mt-1 opacity-70">
+                          {isMultisigDecay ? 'Multi-sig threshold spend' : 'Spend anytime with owner key'}
+                        </p>
                       </button>
                       <button
                         onClick={() => setSpendPath('heir')}
@@ -183,9 +186,11 @@ export function PSBTExportModal({ vault }: PSBTExportModalProps) {
                             : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-600'
                         } ${!canUseHeirPath ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
-                        <p className="font-medium">Heir</p>
+                        <p className="font-medium">{isMultisigDecay ? 'After Decay' : 'Heir'}</p>
                         <p className="text-xs mt-1 opacity-70">
-                          {canUseHeirPath ? 'After timelock expires' : 'No heir key configured'}
+                          {isMultisigDecay
+                            ? 'Reduced threshold + timelock'
+                            : canUseHeirPath ? 'After timelock expires' : 'No heir key configured'}
                         </p>
                       </button>
                     </div>
