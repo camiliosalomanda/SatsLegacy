@@ -93,6 +93,19 @@ function buildScriptConfig(config: VaultAddressConfig): VaultScriptConfig {
 
   const lockBlocks = calculateLockBlocks(config);
 
+  // Build decay config for multisig_decay so generatePolicy has what it needs
+  const heirKeys = keys.filter(k => k.keyType === 'heir');
+  let decayConfig: MultisigDecayConfig | undefined;
+  if (config.logic.primary === 'multisig_decay' && heirKeys.length > 0) {
+    decayConfig = {
+      initialThreshold: 2,
+      initialTotal: Math.min(3, 1 + heirKeys.length),
+      decayedThreshold: 1,
+      decayedTotal: Math.min(2, heirKeys.length),
+      decayAfterBlocks: lockBlocks,
+    };
+  }
+
   return {
     keys,
     timelocks: [{
@@ -102,6 +115,7 @@ function buildScriptConfig(config: VaultAddressConfig): VaultScriptConfig {
     }],
     logic: config.logic.primary,
     additionalGates: config.logic.gates || [],
+    decayConfig,
   };
 }
 

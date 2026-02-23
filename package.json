@@ -19,6 +19,9 @@
     "build:win": "vite build && electron-builder --win",
     "build:linux": "vite build && electron-builder --linux",
     "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:fixes": "npx tsx scripts/test-miniscript-fixes.ts",
     "test:addresses": "npx tsx scripts/test-vault-addresses.ts"
   },
   "dependencies": {
@@ -55,6 +58,7 @@
     "vite": "^5.0.0",
     "vite-plugin-top-level-await": "^1.6.0",
     "vite-plugin-wasm": "^3.5.0",
+    "vitest": "^4.0.18",
     "wait-on": "^7.2.0"
   },
   "build": {

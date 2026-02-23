@@ -25,7 +25,7 @@ import { dateToBlockHeight, estimateCurrentBlockHeight } from './bitcoin-address
  * Parse a witness script string into a Buffer.
  * Handles both hex string format ("632103...") and comma-separated byte format ("99,33,3,54,...").
  */
-function parseWitnessScript(witnessScriptStr: string): Buffer {
+export function parseWitnessScript(witnessScriptStr: string): Buffer {
   if (typeof witnessScriptStr === 'string' && witnessScriptStr.includes(',')) {
     // Comma-separated numbers format: "99,33,3,54,..."
     const bytes = witnessScriptStr.split(',').map(n => {
@@ -83,7 +83,7 @@ export interface SweepOptions {
  * @param scriptType - Optional: 'multisig_decay' uses larger witness estimate (~300-350 bytes)
  *                     since it includes OP_0 dummy + multiple signatures + branch flag + larger script
  */
-function estimateVsize(
+export function estimateVsize(
   inputCount: number,
   outputCount: number,
   isTimelockSpend: boolean,
@@ -512,7 +512,7 @@ export function combinePsbts(
  * Detect whether a witness script uses CHECKMULTISIG or CHECKSIG.
  * Decompiles the script and looks for the relevant opcodes.
  */
-function detectScriptType(witnessScript: Buffer): 'multisig' | 'checksig' {
+export function detectScriptType(witnessScript: Buffer): 'multisig' | 'checksig' {
   try {
     const decompiled = bitcoin.script.decompile(witnessScript);
     if (decompiled) {

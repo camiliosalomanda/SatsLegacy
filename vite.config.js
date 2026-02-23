@@ -6,6 +6,11 @@ import topLevelAwait from 'vite-plugin-top-level-await'
 export default defineConfig({
   plugins: [react(), wasm(), topLevelAwait()],
   base: './',
+  test: {
+    globals: true,
+    environment: 'node',
+    include: ['src/**/*.test.ts'],
+  },
   build: {
     outDir: 'dist',
     target: 'esnext'
