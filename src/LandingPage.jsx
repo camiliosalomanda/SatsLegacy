@@ -50,7 +50,7 @@ const LandingPage = ({ onEnterApp }) => {
               onClick={onEnterApp}
               className="px-4 py-2 bg-zinc-800 text-white rounded-lg hover:bg-zinc-700 transition-colors"
             >
-              Launch Web App
+              Try Demo
             </button>
           </div>
         </nav>
@@ -71,7 +71,7 @@ const LandingPage = ({ onEnterApp }) => {
 
           <p className="text-xl text-zinc-400 max-w-2xl mx-auto mb-12">
             Create trustless inheritance vaults using Bitcoin's native scripting.
-            No custody, no fees, no third parties. Your keys, your rules, your legacy.
+            No custody, no subscriptions, no third parties. Your keys, your rules, your legacy.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -92,7 +92,7 @@ const LandingPage = ({ onEnterApp }) => {
           </div>
 
           <p className="text-sm text-zinc-600 mt-6">
-            Free tier available • No signup required • Open source
+            Free desktop download • No signup required • Open source
           </p>
 
           {/* Heir Claim Link */}
@@ -169,7 +169,7 @@ const LandingPage = ({ onEnterApp }) => {
                 'No intermediaries - direct peer-to-peer',
                 'Censorship resistant and unseizable',
                 'No accounts, no KYC, no permission needed',
-                'Decentralized with Shamir backups + Nostr'
+                'Decentralized backup options with Shamir + Nostr'
               ].map((item, i) => (
                 <div key={i} className="flex items-start gap-3">
                   <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -228,7 +228,7 @@ const LandingPage = ({ onEnterApp }) => {
           {[
             { step: '1', title: 'Create Vault', desc: 'Choose infrastructure and inheritance logic' },
             { step: '2', title: 'Add Heirs', desc: 'Import heir public keys from their hardware wallets' },
-            { step: '3', title: 'Fund Vault', desc: 'Sign with your hardware wallet via PSBT' },
+            { step: '3', title: 'Fund Vault', desc: 'Export PSBT and sign with your wallet' },
             { step: '4', title: 'Distribute Keys', desc: 'Give heirs their keys and instructions' }
           ].map((item, i) => (
             <div key={i} className="text-center">
