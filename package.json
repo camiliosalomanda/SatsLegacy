@@ -22,7 +22,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:fixes": "npx tsx scripts/test-miniscript-fixes.ts",
-    "test:addresses": "npx tsx scripts/test-vault-addresses.ts"
+    "test:addresses": "npx tsx scripts/test-vault-addresses.ts",
+    "test:regtest": "docker compose -f docker-compose.regtest.yml up -d && npx tsx scripts/regtest/run-regtest-tests.ts ; docker compose -f docker-compose.regtest.yml down"
   },
   "dependencies": {
     "@bitcoinerlab/miniscript": "^1.4.3",

@@ -1,0 +1,15 @@
+services:
+  bitcoind:
+    image: lncm/bitcoind:v27.0
+    ports:
+      - "18443:18443"
+    command:
+      - -regtest
+      - -rpcuser=test
+      - -rpcpassword=test
+      - -rpcallowip=0.0.0.0/0
+      - -rpcbind=0.0.0.0
+      - -fallbackfee=0.00001
+      - -txindex=1
+    tmpfs:
+      - /root/.bitcoin/regtest
