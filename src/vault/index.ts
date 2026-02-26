@@ -15,11 +15,21 @@ export {
   canAddOption,
   getAvailableOptions,
   getPresetBundle,
+  getUnifiedPreset,
+  migrateOldConfig,
   PRESET_BUNDLES,
+  UNIFIED_PRESET_BUNDLES,
   type VaultConfiguration,
   type InfrastructureOption,
   type InheritanceLogic,
   type Modifier,
+  type VaultProfile,
+  type Gate,
+  type KeyRole,
+  type HardenedModeConfig,
+  type ProfileKeyRole,
+  type ProfileTimelockDefaults,
+  type UnifiedPresetBundle,
   type ValidationResult,
   type ValidationError,
   type ValidationWarning,
@@ -33,6 +43,14 @@ export {
 
 export {
   generatePolicy,
+  generatePolicyV2,
+  generateSoloVaultPolicy,
+  generateSpousePlanPolicy,
+  generateFamilyVaultPolicy,
+  generateBusinessVaultPolicy,
+  generateDeadMansSwitchPolicyV2,
+  validateBIP68,
+  applyGates,
   generateStaggeredPolicies,
   compileToMiniscript,
   extractRedeemInfo,
@@ -40,6 +58,7 @@ export {
   type KeyDescriptor,
   type TimelockConfig,
   type VaultScriptConfig,
+  type VaultScriptConfigV2,
   type MiniscriptOutput,
   type RedeemInfo,
   type SpendPath,
@@ -273,8 +292,20 @@ export {
   generateMultisigAddress,
   generateTimelockAddress,
   generateVaultAddress,
+  generateAddressFromPolicy,
+  generateBusinessVaultScript,
   validateAddress,
   getAddressType,
   dateToBlockHeight,
   estimateCurrentBlockHeight,
+  type PolicyAddressResult,
 } from './scripts/bitcoin-address';
+
+// ============================================
+// V2 ADDRESS GENERATION
+// ============================================
+
+export {
+  generateVaultAddressV2,
+  type VaultAddressConfigV2,
+} from './scripts/vault-address-generator';

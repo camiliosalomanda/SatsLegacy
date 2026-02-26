@@ -8,7 +8,8 @@ export interface Beneficiary {
 }
 
 export interface VaultLogic {
-  primary: 'timelock' | 'dead_man_switch' | 'multisig_decay';
+  primary: 'timelock' | 'dead_man_switch' | 'multisig_decay'
+    | 'solo_vault' | 'spouse_plan' | 'family_vault' | 'business_vault' | 'dead_mans_switch';
   gates: string[];
 }
 

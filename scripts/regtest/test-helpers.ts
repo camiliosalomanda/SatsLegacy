@@ -219,11 +219,11 @@ export function signVaultSpend(opts: SignVaultSpendOpts): string {
     sighashType
   );
 
-  // Sign with each signer
+  // Sign with each signer — DER encode for consensus validity
   const signatures: Buffer[] = signers.map(kp => {
-    const sig = kp.sign(sigHash);
-    // Append sighash type byte
-    return Buffer.concat([sig, Buffer.from([sighashType])]);
+    const compactSig = kp.sign(sigHash); // 64-byte r||s
+    // DER encode + append sighash type byte (required by DERSIG/BIP66)
+    return Buffer.from(bitcoin.script.signature.encode(compactSig, sighashType));
   });
 
   // Build witness stack based on spend path

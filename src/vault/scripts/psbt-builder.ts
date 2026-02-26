@@ -69,7 +69,10 @@ export interface SweepOptions {
   destinationAddress: string;
   feeRate?: number; // sat/vB, if not provided will use recommended
   feePriority?: 'fastest' | 'halfHour' | 'hour' | 'economy';
-  spendPath: 'owner' | 'heir';
+  spendPath: 'owner' | 'heir'
+    // V2 profile-specific spend paths
+    | 'spouse' | 'recovery' | 'partner_joint' | 'owner_solo' | 'trustee'
+    | 'family_heir_threshold';
   // For heir path, these are required after timelock
   heirPubkey?: string;
   // Witness script from vault creation
@@ -564,7 +567,9 @@ function serializeWitnessStack(witnessStack: Buffer[]): Buffer {
 export function finalizePsbt(
   psbtString: string,
   network: NetworkType = 'mainnet',
-  spendPath: 'owner' | 'heir' | 'multisig_before_decay' | 'multisig_after_decay' = 'owner'
+  spendPath: 'owner' | 'heir' | 'multisig_before_decay' | 'multisig_after_decay'
+    | 'spouse' | 'recovery' | 'partner_joint' | 'owner_solo' | 'trustee'
+    | 'family_heir_threshold' = 'owner'
 ): { txHex?: string; txId?: string; error?: string } {
   const btcNetwork = networks[network];
 

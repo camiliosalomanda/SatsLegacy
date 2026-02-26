@@ -9,7 +9,7 @@
 // TYPE DEFINITIONS
 // ============================================
 
-export type InfrastructureOption = 
+export type InfrastructureOption =
   | 'local'           // Local encrypted storage (always on)
   | 'microsd'         // Encrypted microSD/steel export
   | 'shamir'          // Shamir backup splits
@@ -17,7 +17,7 @@ export type InfrastructureOption =
   | 'ipfs'            // IPFS pinning
   | 'multisig_config' // Multisig config across devices
 
-export type InheritanceLogic = 
+export type InheritanceLogic =
   | 'timelock'        // Pure timelock
   | 'dead_man_switch' // Requires periodic proof of life
   | 'multisig_decay'  // Starts 2-of-3, decays to 1-of-2
@@ -25,16 +25,60 @@ export type InheritanceLogic =
   | 'oracle'          // Oracle-assisted attestation
   | 'duress'          // Duress routing
 
-export type Modifier = 
+export type Modifier =
   | 'staggered'       // Staggered release over time
   | 'multi_beneficiary' // Multiple heirs with different conditions
   | 'decoy'           // Decoy vault with hidden real vault
 
+// ============================================
+// UNIFIED VAULT PROFILE TYPES
+// ============================================
+
+/** Unified vault profile — replaces InheritanceLogic as primary vault structure */
+export type VaultProfile =
+  | 'solo_vault'        // Owner + recovery key, ~1 year recovery path
+  | 'spouse_plan'       // Owner + spouse (30d) + heir (1y)
+  | 'family_vault'      // Owner + recovery (30d) + 2-of-3 heirs (1y)
+  | 'business_vault'    // Owner+partner joint, owner solo (30d), trustee (1y)
+  | 'dead_mans_switch'  // Owner + heir(s), ~6 month CSV
+
+/** Gate — conditions applied to the furthest heir-tier path */
+export type Gate = 'challenge' | 'oracle'
+
+/** Named key roles for unified profiles (includes legacy 'backup' for backward compat) */
+export type KeyRole = 'owner' | 'recovery' | 'spouse' | 'heir' | 'partner' | 'trustee' | 'oracle' | 'backup'
+
+/** Hardened mode — replaces Hostile Environment preset */
+export interface HardenedModeConfig {
+  enabled: boolean
+  challenge: boolean  // Challenge gate on furthest heir path
+  duress: boolean     // App-layer duress password/decoy
+  decoy: boolean      // Decoy vault modifier
+}
+
+/** Default timelock values for a profile (in blocks) */
+export interface ProfileTimelockDefaults {
+  [role: string]: number  // e.g. { spouse: 4320, heir: 52560 }
+}
+
+/** Key role descriptor for profile presets */
+export interface ProfileKeyRole {
+  role: KeyRole
+  label: string
+  description: string
+  required: boolean
+}
+
+// Unified VaultConfiguration — uses profile instead of primaryLogic
 export interface VaultConfiguration {
   infrastructure: InfrastructureOption[]
-  primaryLogic: InheritanceLogic
-  additionalGates: InheritanceLogic[]
+  primaryLogic: InheritanceLogic        // Legacy — used by existing validation
+  additionalGates: InheritanceLogic[]   // Legacy — used by existing validation
   modifiers: Modifier[]
+  // Unified profile fields (optional during migration, required after Phase 4)
+  profile?: VaultProfile
+  gates?: Gate[]
+  hardened?: HardenedModeConfig
 }
 
 export interface ValidationResult {
@@ -614,5 +658,196 @@ export const PRESET_BUNDLES: PresetBundle[] = [
  */
 export function getPresetBundle(id: string): PresetBundle | undefined {
   return PRESET_BUNDLES.find(b => b.id === id)
+    || UNIFIED_PRESET_BUNDLES.find(b => b.id === id)
+}
+
+// ============================================
+// UNIFIED PRESET BUNDLES (V2)
+// ============================================
+
+export interface UnifiedPresetBundle {
+  id: VaultProfile
+  name: string
+  tagline: string
+  description: string
+  bestFor: string[]
+  keyRoles: ProfileKeyRole[]
+  defaultTimelocks: ProfileTimelockDefaults
+  policy: string  // Template policy string (keys replaced at generation time)
+  config: VaultConfiguration
+}
+
+export const UNIFIED_PRESET_BUNDLES: UnifiedPresetBundle[] = [
+  {
+    id: 'solo_vault',
+    name: 'Solo Vault',
+    tagline: 'Simple self-custody with recovery backup',
+    description: 'Owner can spend anytime. Recovery key unlocks after ~1 year of inactivity. Perfect for getting started.',
+    bestFor: ['Getting started', '< 0.5 BTC', 'Learning the system'],
+    keyRoles: [
+      { role: 'owner', label: 'Owner Key', description: 'Your primary spending key', required: true },
+      { role: 'recovery', label: 'Recovery Key', description: 'Backup key that activates after ~1 year', required: true },
+    ],
+    defaultTimelocks: { recovery: 52560 },
+    policy: 'or(pk(owner),and(pk(recovery),older(52560)))',
+    config: {
+      infrastructure: ['local', 'microsd'],
+      primaryLogic: 'dead_man_switch',
+      additionalGates: [],
+      modifiers: [],
+      profile: 'solo_vault',
+      gates: [],
+    }
+  },
+  {
+    id: 'spouse_plan',
+    name: 'Spouse Plan',
+    tagline: 'Fast access for your partner, delayed for heirs',
+    description: 'Owner spends anytime. Spouse can access after ~30 days of inactivity. Backup heir after ~1 year.',
+    bestFor: ['Married couples', 'Domestic partners', '0.5-5 BTC'],
+    keyRoles: [
+      { role: 'owner', label: 'Owner Key', description: 'Your primary spending key', required: true },
+      { role: 'spouse', label: 'Spouse Key', description: 'Partner key, activates after ~30 days', required: true },
+      { role: 'heir', label: 'Heir Key', description: 'Backup heir, activates after ~1 year', required: true },
+    ],
+    defaultTimelocks: { spouse: 4320, heir: 52560 },
+    policy: 'or(pk(owner),or(and(pk(spouse),older(4320)),and(pk(heir),older(52560))))',
+    config: {
+      infrastructure: ['local', 'microsd', 'shamir'],
+      primaryLogic: 'dead_man_switch',
+      additionalGates: [],
+      modifiers: [],
+      profile: 'spouse_plan',
+      gates: [],
+    }
+  },
+  {
+    id: 'family_vault',
+    name: 'Family Vault',
+    tagline: 'Resilient inheritance for your family',
+    description: 'Owner spends anytime. Recovery key after ~30 days. 2-of-3 heirs can claim after ~1 year.',
+    bestFor: ['Families', '0.5-10 BTC', 'Multiple heirs'],
+    keyRoles: [
+      { role: 'owner', label: 'Owner Key', description: 'Your primary spending key', required: true },
+      { role: 'recovery', label: 'Recovery Key', description: 'Personal backup, activates after ~30 days', required: true },
+      { role: 'heir', label: 'Heir 1 Key', description: 'First heir (2-of-3 required)', required: true },
+      { role: 'heir', label: 'Heir 2 Key', description: 'Second heir (2-of-3 required)', required: true },
+      { role: 'heir', label: 'Heir 3 Key', description: 'Third heir (2-of-3 required)', required: false },
+    ],
+    defaultTimelocks: { recovery: 4320, heir: 52560 },
+    policy: 'or(pk(owner),or(and(pk(recovery),older(4320)),and(thresh(2,pk(heir1),pk(heir2),pk(heir3)),older(52560))))',
+    config: {
+      infrastructure: ['local', 'shamir', 'nostr'],
+      primaryLogic: 'multisig_decay',
+      additionalGates: [],
+      modifiers: [],
+      profile: 'family_vault',
+      gates: [],
+    }
+  },
+  {
+    id: 'business_vault',
+    name: 'Business Vault',
+    tagline: 'Joint custody with succession planning',
+    description: 'Owner+partner spend jointly. Owner can spend solo after ~30 days. Trustee can recover after ~1 year.',
+    bestFor: ['Business partners', 'Joint custody', '1-10 BTC'],
+    keyRoles: [
+      { role: 'owner', label: 'Owner Key', description: 'Your primary key (joint or solo spending)', required: true },
+      { role: 'partner', label: 'Partner Key', description: 'Business partner key for joint spending', required: true },
+      { role: 'trustee', label: 'Trustee Key', description: 'Recovery trustee, activates after ~1 year', required: true },
+    ],
+    defaultTimelocks: { owner_solo: 4320, trustee: 52560 },
+    policy: 'or(and(pk(owner),pk(partner)),or(and(pk(owner),older(4320)),and(pk(trustee),older(52560))))',
+    config: {
+      infrastructure: ['local', 'shamir', 'multisig_config'],
+      primaryLogic: 'multisig_decay',
+      additionalGates: [],
+      modifiers: [],
+      profile: 'business_vault',
+      gates: [],
+    }
+  },
+  {
+    id: 'dead_mans_switch',
+    name: "Dead Man's Switch",
+    tagline: "You stay in control until you don't",
+    description: 'Owner refreshes by spending to self. After ~6 months of inactivity, heir can claim.',
+    bestFor: ['Large holdings', 'Active bitcoiners', '10+ BTC'],
+    keyRoles: [
+      { role: 'owner', label: 'Owner Key', description: 'Your primary spending key (check-in resets timer)', required: true },
+      { role: 'heir', label: 'Heir Key', description: 'Heir key, activates after ~6 months', required: true },
+    ],
+    defaultTimelocks: { heir: 26280 },
+    policy: 'or(pk(owner),and(pk(heir),older(26280)))',
+    config: {
+      infrastructure: ['local', 'shamir', 'nostr'],
+      primaryLogic: 'dead_man_switch',
+      additionalGates: [],
+      modifiers: [],
+      profile: 'dead_mans_switch',
+      gates: [],
+    }
+  },
+]
+
+/**
+ * Get a unified preset bundle by profile ID
+ */
+export function getUnifiedPreset(profile: VaultProfile): UnifiedPresetBundle | undefined {
+  return UNIFIED_PRESET_BUNDLES.find(b => b.id === profile)
+}
+
+// ============================================
+// MIGRATION HELPERS
+// ============================================
+
+/**
+ * Migrate an old VaultConfiguration (primaryLogic-based) to include the new profile field.
+ * Non-destructive — preserves all legacy fields.
+ */
+export function migrateOldConfig(config: VaultConfiguration): VaultConfiguration {
+  if (config.profile) return config // Already migrated
+
+  let profile: VaultProfile
+  const gates: Gate[] = []
+
+  // Map legacy primaryLogic to unified profile
+  switch (config.primaryLogic) {
+    case 'timelock':
+      profile = 'solo_vault'
+      break
+    case 'dead_man_switch':
+      profile = 'dead_mans_switch'
+      break
+    case 'multisig_decay':
+      profile = 'family_vault'
+      break
+    default:
+      profile = 'solo_vault'
+  }
+
+  // Extract gates from additionalGates
+  for (const gate of config.additionalGates) {
+    if (gate === 'challenge') gates.push('challenge')
+    if (gate === 'oracle') gates.push('oracle')
+  }
+
+  // Detect hardened mode from old hostile environment pattern
+  const hasChallenge = config.additionalGates.includes('challenge')
+  const hasDuress = config.additionalGates.includes('duress')
+  const hasDecoy = config.modifiers.includes('decoy')
+  const isHardened = hasDuress || hasDecoy
+
+  return {
+    ...config,
+    profile,
+    gates,
+    hardened: isHardened ? {
+      enabled: true,
+      challenge: hasChallenge,
+      duress: hasDuress,
+      decoy: hasDecoy,
+    } : undefined,
+  }
 }
 

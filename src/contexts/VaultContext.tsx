@@ -245,21 +245,27 @@ export function VaultProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const createVault = useCallback((config: VaultConfiguration, name: string, description: string) => {
+    // Use profile if available, fall back to primaryLogic for legacy configs
+    const primary = config.profile || config.primaryLogic;
+    const gates = config.gates
+      ? config.gates as string[]
+      : config.additionalGates as string[];
+
     const newVault: PendingVaultData = {
       vault_id: crypto.randomUUID(),
       name: name,
       description: description,
       balance: 0,
       balanceUSD: 0,
-      scriptType: config.primaryLogic,
+      scriptType: primary,
       lockDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
       beneficiaries: [],
       status: 'pending',
       inactivityTrigger: 365,
       infrastructure: config.infrastructure,
       logic: {
-        primary: config.primaryLogic,
-        gates: config.additionalGates
+        primary: primary as PendingVaultData['logic']['primary'],
+        gates,
       },
       modifiers: {
         staggered: config.modifiers.includes('staggered'),

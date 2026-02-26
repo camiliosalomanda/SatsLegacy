@@ -5,12 +5,15 @@
  * These policies compile to Bitcoin Script for on-chain inheritance.
  */
 
-import type { VaultConfiguration, InheritanceLogic } from '../creation/validation/compatibility';
+import type { VaultConfiguration, InheritanceLogic, VaultProfile, Gate, KeyRole } from '../creation/validation/compatibility';
 import { compilePolicy as compileMiniscriptPolicy, compileMiniscript as compileMiniscriptToAsm, satisfier } from '@bitcoinerlab/miniscript';
 import type { SpendPath, MultisigDecayConfig } from './types';
 
 // Re-export shared types so existing consumers that import from miniscript.ts still work
 export type { SpendPath, MultisigDecayConfig } from './types';
+
+// Re-export new types for convenience
+export type { VaultProfile, Gate, KeyRole } from '../creation/validation/compatibility';
 
 // ============================================
 // TYPE DEFINITIONS
@@ -21,7 +24,7 @@ export interface KeyDescriptor {
   label: string
   publicKey: string      // Hex-encoded public key
   derivationPath?: string // BIP32 path if applicable
-  keyType: 'owner' | 'heir' | 'backup' | 'oracle'
+  keyType: KeyRole       // Widened from 'owner' | 'heir' | 'backup' | 'oracle'
 }
 
 export interface TimelockConfig {
@@ -74,7 +77,248 @@ export interface RedeemInfo {
 // SpendPath is imported+re-exported from ./types
 
 // ============================================
-// POLICY TEMPLATES
+// V2 SCRIPT CONFIG (profile-based)
+// ============================================
+
+export interface VaultScriptConfigV2 {
+  keys: KeyDescriptor[]
+  timelocks: TimelockConfig[]
+  profile: VaultProfile
+  gates: Gate[]
+  challengeHash?: string
+  duressConfig?: DuressConfig
+  decayConfig?: MultisigDecayConfig
+  staggeredConfig?: StaggeredReleaseConfig
+}
+
+// ============================================
+// BIP68 VALIDATION
+// ============================================
+
+/**
+ * Validate that a relative timelock value fits within BIP68 range.
+ * BIP68 block-based max is 65535 blocks (~455 days).
+ */
+export function validateBIP68(blocks: number): void {
+  if (blocks < 1 || blocks > 65535) {
+    throw new Error(
+      `older() value ${blocks} is out of BIP68 range (1-65535). ` +
+      `Maximum is ~455 days in block-based mode.`
+    )
+  }
+}
+
+// ============================================
+// GATE APPLICATION HELPER
+// ============================================
+
+/**
+ * Apply gates (challenge, oracle) to a spending condition string.
+ * Gates wrap the condition with additional requirements.
+ * Duress is NOT applied on-chain — handled at app layer.
+ */
+export function applyGates(
+  condition: string,
+  gates: Gate[],
+  config: { challengeHash?: string; oracleKey?: string }
+): string {
+  let result = condition
+  for (const gate of gates) {
+    switch (gate) {
+      case 'challenge':
+        if (config.challengeHash) {
+          result = `and(sha256(${config.challengeHash}),${result})`
+        }
+        break
+      case 'oracle':
+        if (config.oracleKey) {
+          result = `and(pk(${config.oracleKey}),${result})`
+        }
+        break
+    }
+  }
+  return result
+}
+
+// ============================================
+// V2 PROFILE-BASED POLICY GENERATORS
+// ============================================
+
+/**
+ * Solo Vault: or(pk(owner), and(pk(recovery), older(52560)))
+ * Owner spends anytime, recovery key after ~1 year
+ */
+export function generateSoloVaultPolicy(config: VaultScriptConfigV2): string {
+  const ownerKey = config.keys.find(k => k.keyType === 'owner')?.publicKey
+  const recoveryKey = config.keys.find(k => k.keyType === 'recovery')?.publicKey
+
+  if (!ownerKey) throw new Error('Owner key is required for Solo Vault')
+  if (!recoveryKey) throw new Error('Recovery key is required for Solo Vault')
+
+  const recoveryBlocks = config.timelocks.find(t => t.type === 'relative')?.value ?? 52560
+  validateBIP68(recoveryBlocks)
+
+  let recoveryCondition = `and(pk(${recoveryKey}),older(${recoveryBlocks}))`
+  recoveryCondition = applyGates(recoveryCondition, config.gates, {
+    challengeHash: config.challengeHash,
+    oracleKey: config.keys.find(k => k.keyType === 'oracle')?.publicKey,
+  })
+
+  return `or(pk(${ownerKey}),${recoveryCondition})`
+}
+
+/**
+ * Spouse Plan: or(pk(owner), or(and(pk(spouse), older(4320)), and(pk(heir), older(52560))))
+ * Owner spends anytime, spouse after ~30 days, heir after ~1 year
+ */
+export function generateSpousePlanPolicy(config: VaultScriptConfigV2): string {
+  const ownerKey = config.keys.find(k => k.keyType === 'owner')?.publicKey
+  const spouseKey = config.keys.find(k => k.keyType === 'spouse')?.publicKey
+  const heirKey = config.keys.find(k => k.keyType === 'heir')?.publicKey
+
+  if (!ownerKey) throw new Error('Owner key is required for Spouse Plan')
+  if (!spouseKey) throw new Error('Spouse key is required for Spouse Plan')
+  if (!heirKey) throw new Error('Heir key is required for Spouse Plan')
+
+  // Find spouse and heir timelocks
+  const spouseBlocks = config.timelocks.find(t => t.type === 'relative' && t.value <= 8640)?.value ?? 4320
+  const heirBlocks = config.timelocks.find(t => t.type === 'relative' && t.value > 8640)?.value ?? 52560
+  validateBIP68(spouseBlocks)
+  validateBIP68(heirBlocks)
+
+  const spouseCondition = `and(pk(${spouseKey}),older(${spouseBlocks}))`
+
+  // Gates apply ONLY to the furthest heir-tier path
+  let heirCondition = `and(pk(${heirKey}),older(${heirBlocks}))`
+  heirCondition = applyGates(heirCondition, config.gates, {
+    challengeHash: config.challengeHash,
+    oracleKey: config.keys.find(k => k.keyType === 'oracle')?.publicKey,
+  })
+
+  return `or(pk(${ownerKey}),or(${spouseCondition},${heirCondition}))`
+}
+
+/**
+ * Family Vault: or(pk(owner), or(and(pk(recovery), older(4320)), and(thresh(2, pk(heir1), pk(heir2), pk(heir3)), older(52560))))
+ * Owner spends anytime, recovery after ~30 days, 2-of-3 heirs after ~1 year
+ */
+export function generateFamilyVaultPolicy(config: VaultScriptConfigV2): string {
+  const ownerKey = config.keys.find(k => k.keyType === 'owner')?.publicKey
+  const recoveryKey = config.keys.find(k => k.keyType === 'recovery')?.publicKey
+  const heirKeys = config.keys.filter(k => k.keyType === 'heir').map(k => k.publicKey)
+
+  if (!ownerKey) throw new Error('Owner key is required for Family Vault')
+  if (!recoveryKey) throw new Error('Recovery key is required for Family Vault')
+  if (heirKeys.length < 2) throw new Error('At least 2 heir keys required for Family Vault')
+
+  const recoveryBlocks = config.timelocks.find(t => t.type === 'relative' && t.value <= 8640)?.value ?? 4320
+  const heirBlocks = config.timelocks.find(t => t.type === 'relative' && t.value > 8640)?.value ?? 52560
+  validateBIP68(recoveryBlocks)
+  validateBIP68(heirBlocks)
+
+  const recoveryCondition = `and(pk(${recoveryKey}),older(${recoveryBlocks}))`
+
+  // Threshold: 2-of-N heirs (minimum 2 required of however many are provided)
+  const threshold = Math.min(2, heirKeys.length)
+  const threshParts = heirKeys.map(k => `pk(${k})`).join(',')
+  let heirCondition = `and(thresh(${threshold},${threshParts}),older(${heirBlocks}))`
+
+  // Gates apply only to the furthest heir-tier path
+  heirCondition = applyGates(heirCondition, config.gates, {
+    challengeHash: config.challengeHash,
+    oracleKey: config.keys.find(k => k.keyType === 'oracle')?.publicKey,
+  })
+
+  return `or(pk(${ownerKey}),or(${recoveryCondition},${heirCondition}))`
+}
+
+/**
+ * Business Vault: or(and(pk(owner), pk(partner)), or(and(pk(owner), older(4320)), and(pk(trustee), older(52560))))
+ * Owner+partner spend jointly, owner solo after ~30 days, trustee after ~1 year
+ *
+ * NOTE: This policy intentionally reuses the owner key in the joint path and owner-solo path.
+ * This means it cannot compile to "sane" miniscript (the compiler disallows key reuse across
+ * branches). Address generation for business vault uses direct Bitcoin Script construction
+ * via generateBusinessVaultScript() in bitcoin-address.ts.
+ */
+export function generateBusinessVaultPolicy(config: VaultScriptConfigV2): string {
+  const ownerKey = config.keys.find(k => k.keyType === 'owner')?.publicKey
+  const partnerKey = config.keys.find(k => k.keyType === 'partner')?.publicKey
+  const trusteeKey = config.keys.find(k => k.keyType === 'trustee')?.publicKey
+
+  if (!ownerKey) throw new Error('Owner key is required for Business Vault')
+  if (!partnerKey) throw new Error('Partner key is required for Business Vault')
+  if (!trusteeKey) throw new Error('Trustee key is required for Business Vault')
+
+  const ownerSoloBlocks = config.timelocks.find(t => t.type === 'relative' && t.value <= 8640)?.value ?? 4320
+  const trusteeBlocks = config.timelocks.find(t => t.type === 'relative' && t.value > 8640)?.value ?? 52560
+  validateBIP68(ownerSoloBlocks)
+  validateBIP68(trusteeBlocks)
+
+  const jointCondition = `and(pk(${ownerKey}),pk(${partnerKey}))`
+  const ownerSoloCondition = `and(pk(${ownerKey}),older(${ownerSoloBlocks}))`
+
+  // Gates apply only to the furthest heir-tier path (trustee)
+  let trusteeCondition = `and(pk(${trusteeKey}),older(${trusteeBlocks}))`
+  trusteeCondition = applyGates(trusteeCondition, config.gates, {
+    challengeHash: config.challengeHash,
+    oracleKey: config.keys.find(k => k.keyType === 'oracle')?.publicKey,
+  })
+
+  return `or(${jointCondition},or(${ownerSoloCondition},${trusteeCondition}))`
+}
+
+/**
+ * Dead Man's Switch: or(pk(owner), and(pk(heir), older(26280)))
+ * Owner spends anytime (resets timer), heir after ~6 months of inactivity
+ */
+export function generateDeadMansSwitchPolicyV2(config: VaultScriptConfigV2): string {
+  const ownerKey = config.keys.find(k => k.keyType === 'owner')?.publicKey
+  const heirKey = config.keys.find(k => k.keyType === 'heir')?.publicKey
+
+  if (!ownerKey) throw new Error('Owner key is required for Dead Man\'s Switch')
+  if (!heirKey) throw new Error('Heir key is required for Dead Man\'s Switch')
+
+  const timeoutBlocks = config.timelocks.find(t => t.type === 'relative')?.value ?? 26280
+  validateBIP68(timeoutBlocks)
+
+  // Gates apply to the heir path
+  let heirCondition = `and(pk(${heirKey}),older(${timeoutBlocks}))`
+  heirCondition = applyGates(heirCondition, config.gates, {
+    challengeHash: config.challengeHash,
+    oracleKey: config.keys.find(k => k.keyType === 'oracle')?.publicKey,
+  })
+
+  return `or(pk(${ownerKey}),${heirCondition})`
+}
+
+// ============================================
+// V2 POLICY ROUTER
+// ============================================
+
+/**
+ * Generate Miniscript policy from a V2 profile-based config.
+ * Routes to the appropriate profile generator.
+ */
+export function generatePolicyV2(config: VaultScriptConfigV2): string {
+  switch (config.profile) {
+    case 'solo_vault':
+      return generateSoloVaultPolicy(config)
+    case 'spouse_plan':
+      return generateSpousePlanPolicy(config)
+    case 'family_vault':
+      return generateFamilyVaultPolicy(config)
+    case 'business_vault':
+      return generateBusinessVaultPolicy(config)
+    case 'dead_mans_switch':
+      return generateDeadMansSwitchPolicyV2(config)
+    default:
+      throw new Error(`Unknown vault profile: ${config.profile}`)
+  }
+}
+
+// ============================================
+// POLICY TEMPLATES (Legacy)
 // ============================================
 
 /**
@@ -519,10 +763,20 @@ export function analyzePolicy(policy: string): {
 
 export default {
   generatePolicy,
+  generatePolicyV2,
   generateStaggeredPolicies,
   compileToMiniscript,
   compileToScript,
   getWitnessSatisfaction,
   extractRedeemInfo,
-  analyzePolicy
+  analyzePolicy,
+  // V2 profile generators
+  generateSoloVaultPolicy,
+  generateSpousePlanPolicy,
+  generateFamilyVaultPolicy,
+  generateBusinessVaultPolicy,
+  generateDeadMansSwitchPolicyV2,
+  // Helpers
+  validateBIP68,
+  applyGates,
 }

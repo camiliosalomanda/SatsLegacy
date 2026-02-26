@@ -16,10 +16,13 @@ import {
   canAddOption,
   getAvailableOptions,
   PRESET_BUNDLES,
+  UNIFIED_PRESET_BUNDLES,
   type VaultConfiguration,
   type InfrastructureOption,
   type InheritanceLogic,
   type Modifier,
+  type VaultProfile,
+  type UnifiedPresetBundle,
   type ValidationResult,
   type PresetBundle
 } from '../validation/compatibility';
@@ -28,8 +31,8 @@ import {
 // LICENSE TIER CONFIGURATION
 // ============================================
 
-// Free tier: Simple Sovereign only
-const FREE_TIER_BUNDLES = ['simple_sovereign'];
+// Free tier: Simple Sovereign + Solo Vault
+const FREE_TIER_BUNDLES = ['simple_sovereign', 'solo_vault'];
 const FREE_TIER_INFRASTRUCTURE: InfrastructureOption[] = ['local', 'microsd'];
 const FREE_TIER_LOGIC: InheritanceLogic[] = ['timelock'];
 const FREE_TIER_MODIFIERS: Modifier[] = [];
@@ -37,14 +40,14 @@ const FREE_TIER_MODIFIERS: Modifier[] = [];
 // Standard tier: Everything EXCEPT Active Guardian and Hostile Environment features
 // Active Guardian uses: dead_man_switch, staggered
 // Hostile Environment uses: duress, decoy
-const STANDARD_TIER_BUNDLES = ['simple_sovereign', 'resilient_sovereign'];
+const STANDARD_TIER_BUNDLES = ['simple_sovereign', 'resilient_sovereign', 'solo_vault', 'spouse_plan', 'family_vault', 'business_vault'];
 const STANDARD_TIER_INFRASTRUCTURE: InfrastructureOption[] = ['local', 'microsd', 'shamir', 'nostr', 'ipfs', 'multisig_config'];
 const STANDARD_TIER_LOGIC: InheritanceLogic[] = ['timelock', 'multisig_decay', 'challenge', 'oracle'];
 const STANDARD_TIER_MODIFIERS: Modifier[] = ['multi_beneficiary'];
 
-// Pro tier: Everything (Active Guardian + Hostile Environment)
+// Pro tier: Everything (Active Guardian + Hostile Environment + Dead Man's Switch)
 // Additional: dead_man_switch, duress, staggered, decoy
-const PRO_ONLY_BUNDLES = ['active_guardian', 'hostile_environment'];
+const PRO_ONLY_BUNDLES = ['active_guardian', 'hostile_environment', 'dead_mans_switch'];
 const PRO_ONLY_LOGIC: InheritanceLogic[] = ['dead_man_switch', 'duress'];
 const PRO_ONLY_MODIFIERS: Modifier[] = ['staggered', 'decoy'];
 
@@ -260,6 +263,12 @@ export const VaultCreationWizard: React.FC<WizardProps> = ({ onComplete, onCance
   const handleBundleSelect = useCallback((bundleId: string | null) => {
     setSelectedBundle(bundleId);
     if (bundleId) {
+      // Try unified presets first, then classic
+      const unified = UNIFIED_PRESET_BUNDLES.find(b => b.id === bundleId);
+      if (unified) {
+        setConfig({ ...unified.config });
+        return;
+      }
       const bundle = PRESET_BUNDLES.find(b => b.id === bundleId);
       if (bundle) {
         setConfig({ ...bundle.config });
@@ -529,88 +538,120 @@ const BundleStep: React.FC<{
   isLicensed: boolean;
   isPro: boolean;
   onLockedClick: (name: string) => void;
-}> = ({ selected, onSelect, isLicensed, isPro, onLockedClick }) => (
-  <div className="space-y-6">
-    <div>
-      <h3 className="text-lg font-semibold text-white mb-2">Choose Your Starting Point</h3>
-      <p className="text-zinc-400 text-sm">
-        Select a preset that matches your needs, then customize in the next steps.
-      </p>
-    </div>
+}> = ({ selected, onSelect, isLicensed, isPro, onLockedClick }) => {
+  const [showClassic, setShowClassic] = React.useState(false);
 
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {PRESET_BUNDLES.map((bundle) => {
-        const isFreeTier = FREE_TIER_BUNDLES.includes(bundle.id);
-        const isStandardTier = STANDARD_TIER_BUNDLES.includes(bundle.id);
-        const isProOnly = PRO_ONLY_BUNDLES.includes(bundle.id);
+  const renderProfileCard = (bundle: UnifiedPresetBundle | PresetBundle) => {
+    const isFreeTier = FREE_TIER_BUNDLES.includes(bundle.id);
+    const isProOnly = PRO_ONLY_BUNDLES.includes(bundle.id);
+    const isLocked = isProOnly ? !isPro : (!isLicensed && !isFreeTier);
+    const lockLabel = isProOnly ? 'Pro' : 'Standard';
+    const isUnified = 'keyRoles' in bundle;
 
-        // Determine if locked: Pro bundles require Pro, Standard bundles require any license, Free bundles are free
-        const isLocked = isProOnly ? !isPro : (!isLicensed && !isFreeTier);
-        const lockLabel = isProOnly ? 'Pro' : 'Standard';
-
-        return (
-        <button
-          key={bundle.id}
-          onClick={() => isLocked ? onLockedClick(bundle.name) : onSelect(bundle.id)}
-          className={`text-left p-4 rounded-lg border transition-all relative ${
-            selected === bundle.id
-              ? 'border-orange-500 bg-orange-500/10'
-              : isLocked
-              ? 'border-zinc-700 bg-zinc-800/30 opacity-75'
-              : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-500'
-          }`}
-        >
-          {isLocked && (
-            <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 bg-zinc-700 rounded text-xs text-zinc-400">
-              <Lock className="w-3 h-3" />
-              {lockLabel}
-            </div>
-          )}
-          <div className="flex items-start justify-between mb-2">
-            <h4 className={`font-semibold ${isLocked ? 'text-zinc-400' : 'text-white'}`}>{bundle.name}</h4>
-            {selected === bundle.id && (
-              <CheckCircle className="w-5 h-5 text-orange-500" />
-            )}
+    return (
+      <button
+        key={bundle.id}
+        onClick={() => isLocked ? onLockedClick(bundle.name) : onSelect(bundle.id)}
+        className={`text-left p-4 rounded-lg border transition-all relative ${
+          selected === bundle.id
+            ? 'border-orange-500 bg-orange-500/10'
+            : isLocked
+            ? 'border-zinc-700 bg-zinc-800/30 opacity-75'
+            : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-500'
+        }`}
+      >
+        {isLocked && (
+          <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 bg-zinc-700 rounded text-xs text-zinc-400">
+            <Lock className="w-3 h-3" />
+            {lockLabel}
           </div>
-          <p className={`text-sm mb-2 ${isLocked ? 'text-zinc-500' : 'text-orange-400'}`}>{bundle.tagline}</p>
-          <p className={`text-sm mb-3 ${isLocked ? 'text-zinc-500' : 'text-zinc-400'}`}>{bundle.description}</p>
-          <div className="flex flex-wrap gap-1">
-            {bundle.bestFor.map((tag) => (
+        )}
+        <div className="flex items-start justify-between mb-2">
+          <h4 className={`font-semibold ${isLocked ? 'text-zinc-400' : 'text-white'}`}>{bundle.name}</h4>
+          {selected === bundle.id && (
+            <CheckCircle className="w-5 h-5 text-orange-500" />
+          )}
+        </div>
+        <p className={`text-sm mb-2 ${isLocked ? 'text-zinc-500' : 'text-orange-400'}`}>{bundle.tagline}</p>
+        <p className={`text-sm mb-3 ${isLocked ? 'text-zinc-500' : 'text-zinc-400'}`}>{bundle.description}</p>
+        {isUnified && (bundle as UnifiedPresetBundle).keyRoles && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {(bundle as UnifiedPresetBundle).keyRoles.filter(r => r.required).map((role) => (
               <span
-                key={tag}
-                className={`text-xs px-2 py-0.5 rounded ${isLocked ? 'bg-zinc-800 text-zinc-500' : 'bg-zinc-700 text-zinc-300'}`}
+                key={role.role}
+                className={`text-xs px-2 py-0.5 rounded ${isLocked ? 'bg-zinc-800 text-zinc-500' : 'bg-orange-500/20 text-orange-300'}`}
               >
-                {tag}
+                {role.label}
               </span>
             ))}
           </div>
-        </button>
-        );
-      })}
-    </div>
+        )}
+        <div className="flex flex-wrap gap-1">
+          {bundle.bestFor.map((tag) => (
+            <span
+              key={tag}
+              className={`text-xs px-2 py-0.5 rounded ${isLocked ? 'bg-zinc-800 text-zinc-500' : 'bg-zinc-700 text-zinc-300'}`}
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      </button>
+    );
+  };
 
-    <button
-      onClick={() => onSelect(null)}
-      className={`w-full text-left p-4 rounded-lg border transition-all ${
-        selected === null
-          ? 'border-orange-500 bg-orange-500/10'
-          : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-500'
-      }`}
-    >
-      <div className="flex items-center gap-2">
-        <Zap className="w-5 h-5 text-zinc-400" />
-        <span className="font-medium text-white">Start from Scratch</span>
-        <span className="text-xs px-2 py-0.5 bg-green-500/20 text-green-400 rounded ml-2">Free</span>
-        {selected === null && (
-          <CheckCircle className="w-5 h-5 text-orange-500 ml-auto" />
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold text-white mb-2">Choose Your Vault Profile</h3>
+        <p className="text-zinc-400 text-sm">
+          Each profile defines the key roles, timelocks, and spending paths for your vault.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {UNIFIED_PRESET_BUNDLES.map(renderProfileCard)}
+      </div>
+
+      {/* Classic presets toggle */}
+      <div className="border-t border-zinc-700 pt-4">
+        <button
+          onClick={() => setShowClassic(!showClassic)}
+          className="text-sm text-zinc-500 hover:text-zinc-300 flex items-center gap-1"
+        >
+          {showClassic ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          {showClassic ? 'Hide' : 'Show'} classic presets
+        </button>
+        {showClassic && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            {PRESET_BUNDLES.map(renderProfileCard)}
+          </div>
         )}
       </div>
-      <p className="text-sm text-zinc-400 mt-1">
-        Build your own configuration from individual options. Free tier includes local storage + timelock.
-      </p>
-    </button>
-  </div>
-);
+
+      <button
+        onClick={() => onSelect(null)}
+        className={`w-full text-left p-4 rounded-lg border transition-all ${
+          selected === null
+            ? 'border-orange-500 bg-orange-500/10'
+            : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-500'
+        }`}
+      >
+        <div className="flex items-center gap-2">
+          <Zap className="w-5 h-5 text-zinc-400" />
+          <span className="font-medium text-white">Start from Scratch</span>
+          <span className="text-xs px-2 py-0.5 bg-green-500/20 text-green-400 rounded ml-2">Free</span>
+          {selected === null && (
+            <CheckCircle className="w-5 h-5 text-orange-500 ml-auto" />
+          )}
+        </div>
+        <p className="text-sm text-zinc-400 mt-1">
+          Build your own configuration from individual options. Free tier includes local storage + timelock.
+        </p>
+      </button>
+    </div>
+  );
+};
 
 interface StepPropsWithLicense extends StepProps {
   isLicensed: boolean;

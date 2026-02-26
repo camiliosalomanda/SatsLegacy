@@ -363,7 +363,7 @@ export function generateDeadManSwitchAddress(
 
   return {
     address: p2wsh.address,
-    witnessScript: witnessScript.toString('hex'),
+    witnessScript: toHex(witnessScript),
     sequence,
     redeemInfo: {
       ownerPubkey: ownerPubkeyHex,
@@ -719,7 +719,7 @@ export function generateTimelockAddress(
   
   return {
     address: p2wsh.address,
-    witnessScript: witnessScript.toString('hex'),
+    witnessScript: toHex(witnessScript),
     redeemInfo: {
       ownerPubkey: ownerPubkeyHex,
       heirPubkey: heirPubkeyHex,
@@ -888,6 +888,206 @@ export function getAddressType(address: string): string {
   return 'Unknown';
 }
 
+// ============================================
+// POLICY-BASED ADDRESS GENERATION (V2)
+// ============================================
+
+import { compileToMiniscript } from './miniscript';
+import type { VaultProfile } from '../creation/validation/compatibility';
+
+/**
+ * Result of policy-based address generation
+ */
+export interface PolicyAddressResult {
+  address: string
+  witnessScript: string       // Hex-encoded witness script
+  witnessScriptBuffer: Buffer // Raw witness script buffer
+  policy: string
+  miniscript: string
+  network: 'mainnet' | 'testnet' | 'signet'
+  isValid: boolean
+  error?: string
+}
+
+/**
+ * Generate a P2WSH address from a Miniscript policy string.
+ *
+ * Pipeline: policy → miniscript → witness script → P2WSH address
+ *
+ * This handles the full compilation chain for profiles that compile
+ * to sane miniscript (solo_vault, spouse_plan, family_vault, dead_mans_switch).
+ *
+ * For business_vault (which has intentional key reuse), use
+ * generateBusinessVaultScript() which builds the script directly.
+ */
+export function generateAddressFromPolicy(
+  policy: string,
+  network: 'mainnet' | 'testnet' | 'signet' = 'mainnet'
+): PolicyAddressResult {
+  try {
+    // Step 1: Compile policy to miniscript
+    const miniscriptResult = compileToMiniscript(policy);
+
+    if (!miniscriptResult.isValid || !miniscriptResult.asm) {
+      return {
+        address: '',
+        witnessScript: '',
+        witnessScriptBuffer: Buffer.alloc(0),
+        policy,
+        miniscript: miniscriptResult.miniscript || '',
+        network,
+        isValid: false,
+        error: 'Policy compilation failed — miniscript not sane',
+      }
+    }
+
+    // Step 2: Convert ASM to witness script Buffer
+    const witnessScript = Buffer.from(
+      bitcoin.script.fromASM(miniscriptResult.asm)
+    );
+
+    // Step 3: Generate P2WSH address
+    const p2wsh = bitcoin.payments.p2wsh({
+      redeem: { output: witnessScript },
+      network: networks[network],
+    });
+
+    if (!p2wsh.address) {
+      return {
+        address: '',
+        witnessScript: witnessScript.toString('hex'),
+        witnessScriptBuffer: witnessScript,
+        policy,
+        miniscript: miniscriptResult.miniscript,
+        network,
+        isValid: false,
+        error: 'Failed to generate P2WSH address from compiled script',
+      }
+    }
+
+    return {
+      address: p2wsh.address,
+      witnessScript: witnessScript.toString('hex'),
+      witnessScriptBuffer: witnessScript,
+      policy,
+      miniscript: miniscriptResult.miniscript,
+      network,
+      isValid: true,
+    }
+  } catch (error) {
+    return {
+      address: '',
+      witnessScript: '',
+      witnessScriptBuffer: Buffer.alloc(0),
+      policy,
+      miniscript: '',
+      network,
+      isValid: false,
+      error: error instanceof Error ? error.message : 'Unknown compilation error',
+    }
+  }
+}
+
+/**
+ * Build a Business Vault witness script directly using Bitcoin Script opcodes.
+ *
+ * The business vault has intentional key reuse (owner in joint + solo paths)
+ * which prevents sane miniscript compilation. We build the script manually:
+ *
+ * OP_IF
+ *   // Joint path: owner + partner can spend immediately
+ *   <owner_pubkey> OP_CHECKSIGVERIFY <partner_pubkey> OP_CHECKSIG
+ * OP_ELSE
+ *   OP_IF
+ *     // Owner solo path: owner after 30 days
+ *     <owner_solo_blocks> OP_CHECKSEQUENCEVERIFY OP_DROP
+ *     <owner_pubkey> OP_CHECKSIG
+ *   OP_ELSE
+ *     // Trustee path: trustee after 1 year
+ *     <trustee_blocks> OP_CHECKSEQUENCEVERIFY OP_DROP
+ *     <trustee_pubkey> OP_CHECKSIG
+ *   OP_ENDIF
+ * OP_ENDIF
+ */
+export function generateBusinessVaultScript(
+  ownerPubkeyHex: string,
+  partnerPubkeyHex: string,
+  trusteePubkeyHex: string,
+  ownerSoloBlocks: number,
+  trusteeBlocks: number,
+  network: 'mainnet' | 'testnet' | 'signet' = 'mainnet'
+): { address: string; witnessScript: string; redeemInfo: VaultRedeemInfo } {
+  const ownerPubkey = Buffer.from(ownerPubkeyHex, 'hex');
+  const partnerPubkey = Buffer.from(partnerPubkeyHex, 'hex');
+  const trusteePubkey = Buffer.from(trusteePubkeyHex, 'hex');
+
+  const ownerSoloSeq = bitcoin.script.number.encode(ownerSoloBlocks);
+  const trusteeSeq = bitcoin.script.number.encode(trusteeBlocks);
+
+  const witnessScript = bitcoin.script.compile([
+    bitcoin.opcodes.OP_IF,
+      // Joint: owner + partner
+      ownerPubkey,
+      bitcoin.opcodes.OP_CHECKSIGVERIFY,
+      partnerPubkey,
+      bitcoin.opcodes.OP_CHECKSIG,
+    bitcoin.opcodes.OP_ELSE,
+      bitcoin.opcodes.OP_IF,
+        // Owner solo after CSV
+        ownerSoloSeq,
+        bitcoin.opcodes.OP_CHECKSEQUENCEVERIFY,
+        bitcoin.opcodes.OP_DROP,
+        ownerPubkey,
+        bitcoin.opcodes.OP_CHECKSIG,
+      bitcoin.opcodes.OP_ELSE,
+        // Trustee after CSV
+        trusteeSeq,
+        bitcoin.opcodes.OP_CHECKSEQUENCEVERIFY,
+        bitcoin.opcodes.OP_DROP,
+        trusteePubkey,
+        bitcoin.opcodes.OP_CHECKSIG,
+      bitcoin.opcodes.OP_ENDIF,
+    bitcoin.opcodes.OP_ENDIF,
+  ]);
+
+  const p2wsh = bitcoin.payments.p2wsh({
+    redeem: { output: witnessScript },
+    network: networks[network],
+  });
+
+  if (!p2wsh.address) {
+    throw new Error('Failed to generate business vault address');
+  }
+
+  return {
+    address: p2wsh.address,
+    witnessScript: toHex(witnessScript),
+    redeemInfo: {
+      ownerPubkey: ownerPubkeyHex,
+      timelockType: 'relative',
+      spendPaths: [
+        {
+          name: 'Joint (Owner + Partner)',
+          description: 'Owner and partner can spend together at any time',
+          witness: '<owner_sig> <partner_sig> TRUE <witnessScript>',
+        },
+        {
+          name: 'Owner Solo',
+          description: `Owner can spend alone after ${ownerSoloBlocks} blocks (~${Math.round(ownerSoloBlocks / 144)} days) of inactivity`,
+          witness: '<owner_sig> TRUE FALSE <witnessScript>',
+          sequence: ownerSoloBlocks,
+        },
+        {
+          name: 'Trustee',
+          description: `Trustee can spend after ${trusteeBlocks} blocks (~${Math.round(trusteeBlocks / 144)} days) of inactivity`,
+          witness: '<trustee_sig> FALSE FALSE <witnessScript>',
+          sequence: trusteeBlocks,
+        },
+      ],
+    },
+  };
+}
+
 export default {
   generateP2WPKHAddress,
   generateP2WSHAddress,
@@ -897,6 +1097,8 @@ export default {
   generateTimelockAddress,
   generateDeadManSwitchAddress,
   generateVaultAddress,
+  generateAddressFromPolicy,
+  generateBusinessVaultScript,
   validateAddress,
   getAddressType,
   xpubToPublicKey,

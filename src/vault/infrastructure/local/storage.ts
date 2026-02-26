@@ -38,7 +38,7 @@ export interface PublicKeyEntry {
   id: string
   label: string
   public_key: string
-  key_type: 'owner' | 'heir' | 'backup' | 'oracle'
+  key_type: 'owner' | 'heir' | 'backup' | 'oracle' | 'recovery' | 'spouse' | 'partner' | 'trustee'
 }
 
 export interface TimelockEntry {
