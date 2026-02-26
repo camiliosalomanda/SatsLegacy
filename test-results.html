@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SatsLegacy Test Results — 2026-02-26</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --green: #3fb950;
+    --green-bg: rgba(63,185,80,0.12);
+    --red: #f85149;
+    --red-bg: rgba(248,81,73,0.12);
+    --orange: #d29922;
+    --blue: #58a6ff;
+    --purple: #bc8cff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 2rem;
+    line-height: 1.5;
+  }
+  .container { max-width: 960px; margin: 0 auto; }
+  h1 {
+    font-size: 1.75rem;
+    margin-bottom: 0.25rem;
+    background: linear-gradient(90deg, #f7931a, #ffb347);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .subtitle { color: var(--text-muted); margin-bottom: 2rem; font-size: 0.9rem; }
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .summary-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    text-align: center;
+  }
+  .summary-card .number {
+    font-size: 2rem;
+    font-weight: 700;
+    display: block;
+  }
+  .summary-card .label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .summary-card.total .number { color: var(--blue); }
+  .summary-card.passed .number { color: var(--green); }
+  .summary-card.failed .number { color: var(--green); }
+  .summary-card.suites .number { color: var(--purple); }
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+  }
+  .section-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .section-badge {
+    font-size: 0.75rem;
+    padding: 0.2em 0.6em;
+    border-radius: 99px;
+    font-weight: 600;
+  }
+  .badge-green { background: var(--green-bg); color: var(--green); }
+  .badge-blue { background: rgba(88,166,255,0.12); color: var(--blue); }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left;
+    padding: 0.6rem 1.25rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 0.6rem 1.25rem;
+    font-size: 0.875rem;
+    border-bottom: 1px solid var(--border);
+  }
+  tr:last-child td { border-bottom: none; }
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-weight: 600;
+    font-size: 0.8rem;
+  }
+  .status-pass { color: var(--green); }
+  .status-fail { color: var(--red); }
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .dot-pass { background: var(--green); }
+  .dot-fail { background: var(--red); }
+  .txid {
+    font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .profile-tag {
+    font-size: 0.7rem;
+    padding: 0.15em 0.5em;
+    border-radius: 4px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .tag-solo { background: rgba(88,166,255,0.15); color: #79c0ff; }
+  .tag-spouse { background: rgba(188,140,255,0.15); color: #d2a8ff; }
+  .tag-family { background: rgba(63,185,80,0.15); color: #7ee787; }
+  .tag-business { background: rgba(210,153,34,0.15); color: #e3b341; }
+  .tag-dms { background: rgba(248,81,73,0.15); color: #ffa198; }
+  .tag-timelock { background: rgba(88,166,255,0.15); color: #79c0ff; }
+  .tag-multisig { background: rgba(210,153,34,0.15); color: #e3b341; }
+  .tag-psbt { background: rgba(188,140,255,0.15); color: #d2a8ff; }
+  .tag-unit { background: rgba(63,185,80,0.15); color: #7ee787; }
+  .expect-col { font-size: 0.8rem; color: var(--text-muted); }
+  .footer {
+    text-align: center;
+    padding: 2rem 0 1rem;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+  }
+  .footer a { color: var(--blue); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>SatsLegacy Test Results</h1>
+<p class="subtitle">Run on 2026-02-26 &nbsp;|&nbsp; Commit <code>ad9b2665</code> on <code>main</code> &nbsp;|&nbsp; Bitcoin Core v27.0 (regtest)</p>
+
+<div class="summary-grid">
+  <div class="summary-card total"><span class="number">107</span><span class="label">Total Tests</span></div>
+  <div class="summary-card passed"><span class="number">107</span><span class="label">Passed</span></div>
+  <div class="summary-card failed"><span class="number">0</span><span class="label">Failed</span></div>
+  <div class="summary-card suites"><span class="number">6</span><span class="label">Suites</span></div>
+</div>
+
+<!-- ══════════════ UNIT TESTS ══════════════ -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-title">
+      <span class="profile-tag tag-unit">VITEST</span>
+      Unit Tests — 75 tests, 4 files
+    </span>
+    <span class="section-badge badge-green">75 / 75</span>
+  </div>
+  <table>
+    <tr><th>File</th><th>Tests</th><th>Time</th><th>Status</th></tr>
+    <tr>
+      <td>miniscript.test.ts</td>
+      <td>42</td>
+      <td>127ms</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+    </tr>
+    <tr>
+      <td>bitcoin-address.test.ts</td>
+      <td>10</td>
+      <td>16ms</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+    </tr>
+    <tr>
+      <td>vault-address-generator.test.ts</td>
+      <td>7</td>
+      <td>15ms</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+    </tr>
+    <tr>
+      <td>psbt-builder.test.ts</td>
+      <td>16</td>
+      <td>10ms</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+    </tr>
+  </table>
+</div>
+
+<!-- ══════════════ V1 REGTEST ══════════════ -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-title">
+      <span class="profile-tag tag-timelock">REGTEST V1</span>
+      Legacy Vault Integration Tests
+    </span>
+    <span class="section-badge badge-green">12 / 12</span>
+  </div>
+  <table>
+    <tr><th>#</th><th>Test</th><th>Expected</th><th>Status</th><th>TXID / Detail</th></tr>
+    <tr>
+      <td>1</td>
+      <td><span class="profile-tag tag-timelock">Timelock</span> Owner Spend</td>
+      <td class="expect-col">Accepted</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">b4b3d8f2…d2dd21</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td><span class="profile-tag tag-timelock">Timelock</span> Heir Before Locktime</td>
+      <td class="expect-col">Rejected</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">non-final</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td><span class="profile-tag tag-timelock">Timelock</span> Heir After Locktime</td>
+      <td class="expect-col">Accepted</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">e257c768…d11c08</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td><span class="profile-tag tag-dms">DMS</span> Owner Refresh</td>
+      <td class="expect-col">Accepted</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">6bc31aef…e99a47</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td><span class="profile-tag tag-dms">DMS</span> Heir Before CSV</td>
+      <td class="expect-col">Rejected</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">non-BIP68-final</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td><span class="profile-tag tag-dms">DMS</span> Heir After CSV</td>
+      <td class="expect-col">Accepted</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">cee48e36…cd0f33</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td><span class="profile-tag tag-multisig">Multisig</span> 2-of-3 Before Decay</td>
+      <td class="expect-col">Accepted</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">21427200…6c4297</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td><span class="profile-tag tag-multisig">Multisig</span> 1-of-2 Heir Before Decay</td>
+      <td class="expect-col">Rejected</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">non-final</td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td><span class="profile-tag tag-multisig">Multisig</span> 1-of-2 Heir After Decay</td>
+      <td class="expect-col">Accepted</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">1e6a20dd…0e35bf</td>
+    </tr>
+    <tr>
+      <td>10a</td>
+      <td><span class="profile-tag tag-psbt">PSBT</span> finalizePsbt Completes</td>
+      <td class="expect-col">No error</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">—</td>
+    </tr>
+    <tr>
+      <td>10b</td>
+      <td><span class="profile-tag tag-psbt">PSBT</span> finalizePsbt Consensus</td>
+      <td class="expect-col">Accepted</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">30a9c311…9a09de</td>
+    </tr>
+    <tr>
+      <td>&nbsp;</td>
+      <td><span class="profile-tag tag-timelock">Timelock</span> Vault Funded</td>
+      <td class="expect-col">Confirmed</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">100000000 sats</td>
+    </tr>
+  </table>
+</div>
+
+<!-- ══════════════ V2 REGTEST ══════════════ -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-title">
+      <span class="profile-tag tag-solo">REGTEST V2</span>
+      Unified Vault Profile Integration Tests
+    </span>
+    <span class="section-badge badge-green">20 / 20</span>
+  </div>
+  <table>
+    <tr><th>#</th><th>Test</th><th>Expected</th><th>Status</th><th>TXID / Detail</th></tr>
+    <!-- Solo Vault -->
+    <tr>
+      <td>V2-1</td>
+      <td><span class="profile-tag tag-solo">Solo</span> Owner Spend</td>
+      <td class="expect-col">Accepted</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">6396ed8b…daf946</td>
+    </tr>
+    <tr>
+      <td>V2-2</td>
+      <td><span class="profile-tag tag-solo">Solo</span> Recovery Before CSV</td>
+      <td class="expect-col">Rejected</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">non-BIP68-final</td>
+    </tr>
+    <tr>
+      <td>V2-3</td>
+      <td><span class="profile-tag tag-solo">Solo</span> Recovery After CSV</td>
+      <td class="expect-col">Accepted</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">7dbf2f8c…c4ffb6</td>
+    </tr>
+    <!-- Spouse Plan -->
+    <tr>
+      <td>V2-4</td>
+      <td><span class="profile-tag tag-spouse">Spouse</span> Owner Spend</td>
+      <td class="expect-col">Accepted</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">903ef24a…ea72fb</td>
+    </tr>
+    <tr>
+      <td>V2-5</td>
+      <td><span class="profile-tag tag-spouse">Spouse</span> Spouse Before CSV</td>
+      <td class="expect-col">Rejected</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">non-BIP68-final</td>
+    </tr>
+    <tr>
+      <td>V2-6</td>
+      <td><span class="profile-tag tag-spouse">Spouse</span> Spouse After CSV</td>
+      <td class="expect-col">Accepted</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">900a2b13…9b2980</td>
+    </tr>
+    <tr>
+      <td>V2-7</td>
+      <td><span class="profile-tag tag-spouse">Spouse</span> Heir Before CSV</td>
+      <td class="expect-col">Rejected</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">non-BIP68-final</td>
+    </tr>
+    <tr>
+      <td>V2-8</td>
+      <td><span class="profile-tag tag-spouse">Spouse</span> Heir After CSV</td>
+      <td class="expect-col">Accepted</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">9d745afb…21999</td>
+    </tr>
+    <!-- Family Vault -->
+    <tr>
+      <td>V2-9</td>
+      <td><span class="profile-tag tag-family">Family</span> Owner Spend</td>
+      <td class="expect-col">Accepted</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">20036afc…9e70db</td>
+    </tr>
+    <tr>
+      <td>V2-10</td>
+      <td><span class="profile-tag tag-family">Family</span> Recovery Before CSV</td>
+      <td class="expect-col">Rejected</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">non-BIP68-final</td>
+    </tr>
+    <tr>
+      <td>V2-11</td>
+      <td><span class="profile-tag tag-family">Family</span> Recovery After CSV</td>
+      <td class="expect-col">Accepted</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">30e02686…bac8cd</td>
+    </tr>
+    <tr>
+      <td>V2-12</td>
+      <td><span class="profile-tag tag-family">Family</span> 1-of-3 Heir (Threshold Fail)</td>
+      <td class="expect-col">Rejected</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">CHECKMULTISIG failed</td>
+    </tr>
+    <tr>
+      <td>V2-13</td>
+      <td><span class="profile-tag tag-family">Family</span> 2-of-3 Heirs After CSV</td>
+      <td class="expect-col">Accepted</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">ce9bcbfc…dc600c</td>
+    </tr>
+    <!-- Business Vault -->
+    <tr>
+      <td>V2-14</td>
+      <td><span class="profile-tag tag-business">Business</span> Joint Spend</td>
+      <td class="expect-col">Accepted</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">509417aa…061871</td>
+    </tr>
+    <tr>
+      <td>V2-15</td>
+      <td><span class="profile-tag tag-business">Business</span> Owner Solo Before CSV</td>
+      <td class="expect-col">Rejected</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">non-BIP68-final</td>
+    </tr>
+    <tr>
+      <td>V2-16</td>
+      <td><span class="profile-tag tag-business">Business</span> Owner Solo After CSV</td>
+      <td class="expect-col">Accepted</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">1dd3eeda…5547df</td>
+    </tr>
+    <tr>
+      <td>V2-17</td>
+      <td><span class="profile-tag tag-business">Business</span> Trustee Before CSV</td>
+      <td class="expect-col">Rejected</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">non-BIP68-final</td>
+    </tr>
+    <tr>
+      <td>V2-18</td>
+      <td><span class="profile-tag tag-business">Business</span> Trustee After CSV</td>
+      <td class="expect-col">Accepted</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">f53b5b08…f87a3</td>
+    </tr>
+    <!-- Dead Man's Switch -->
+    <tr>
+      <td>V2-19</td>
+      <td><span class="profile-tag tag-dms">DMS</span> Owner Refresh</td>
+      <td class="expect-col">Accepted</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">7e2af451…8d5a28</td>
+    </tr>
+    <tr>
+      <td>V2-20</td>
+      <td><span class="profile-tag tag-dms">DMS</span> Heir After Inactivity</td>
+      <td class="expect-col">Accepted</td>
+      <td><span class="status status-pass"><span class="dot dot-pass"></span> PASS</span></td>
+      <td class="txid">7aba81df…c02136</td>
+    </tr>
+  </table>
+</div>
+
+<div class="footer">
+  SatsLegacy v1.7.0 &nbsp;|&nbsp; Vitest v4.0.18 &nbsp;|&nbsp; Bitcoin Core v27.0 &nbsp;|&nbsp; <a href="https://github.com/camiliosalomanda/SatsLegacy">GitHub</a>
+</div>
+
+</div>
+</body>
+</html>
