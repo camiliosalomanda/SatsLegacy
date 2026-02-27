@@ -3,6 +3,9 @@ dist/
 release/
 .DS_Store
 *.log
+.env.local
+.env*.local
 
 # Private - kept in SatsLegacy-private repo
 license-server/
+nul
