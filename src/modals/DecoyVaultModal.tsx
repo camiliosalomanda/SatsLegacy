@@ -89,12 +89,14 @@ export function DecoyVaultModal() {
     }
   };
 
-  // Generate a realistic-looking fake Bitcoin address
+  // Generate a realistic-looking fake Bitcoin address using CSPRNG
   const generateFakeAddress = () => {
     const chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+    const randomBytes = new Uint8Array(38);
+    crypto.getRandomValues(randomBytes);
     let addr = 'bc1q';
     for (let i = 0; i < 38; i++) {
-      addr += chars[Math.floor(Math.random() * chars.length)];
+      addr += chars[randomBytes[i] % chars.length];
     }
     return addr;
   };
